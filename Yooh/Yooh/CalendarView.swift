@@ -12,6 +12,7 @@ struct CalendarView: View {
     @ObservedObject var calendarManager: CalendarManager
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.dismiss) var dismiss
+    @State private var showingAddClass = false
     
     @State private var selectedDate = Date()
     @State private var currentMonth = Date()
@@ -58,11 +59,19 @@ struct CalendarView: View {
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: { showingAddClass = true }) {
+                        Image(systemName: "plus")
+                    }
+                }
+                ToolbarItem(placement: .navigationBarLeading) {
                     Button("Done") {
                         dismiss()
                     }
                     .foregroundColor(accentColor)
                 }
+            }
+            .sheet(isPresented: $showingAddClass) {
+                AddClassView()
             }
         }
         .onAppear {
@@ -174,9 +183,9 @@ struct CalendarGridView: View {
     }
     
     private func hasAttendance(for date: Date) -> Bool {
-        return attendanceRecords.contains { record in
-            calendar.isDate(record.date, inSameDayAs: date)
-        }
+        return attendanceRecords.contains(where: { record in
+            calendar.isDate(record.timestamp, inSameDayAs: date)
+        })
     }
     
     private func previousMonth() {
@@ -298,7 +307,7 @@ struct AttendanceDetailCard: View {
                         .font(.system(size: 18, weight: .semibold))
                         .foregroundColor(primaryTextColor)
                     
-                    Text(attendance.date, style: .time)
+                    Text(attendance.timestamp, style: .time)
                         .font(.system(size: 14, weight: .medium))
                         .foregroundColor(secondaryTextColor)
                 }
@@ -314,11 +323,11 @@ struct AttendanceDetailCard: View {
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(primaryTextColor)
                 
-                Text("Lat: \(attendance.location.latitude, specifier: "%.6f")")
+                Text("Lat: \(attendance.latitude)")
                     .font(.system(size: 12, design: .monospaced))
                     .foregroundColor(secondaryTextColor)
                 
-                Text("Lng: \(attendance.location.longitude, specifier: "%.6f")")
+                Text("Lng: \(attendance.longitude)")
                     .font(.system(size: 12, design: .monospaced))
                     .foregroundColor(secondaryTextColor)
             }
@@ -435,7 +444,7 @@ struct NoAttendanceCard: View {
 }
 
 struct UpcomingClassesCard: View {
-    let classes: [ClassEvent]
+    let classes: [SchoolClass]
     @Environment(\.colorScheme) var colorScheme
     
     var body: some View {
@@ -468,7 +477,7 @@ struct UpcomingClassesCard: View {
 }
 
 struct ClassEventRow: View {
-    let classEvent: ClassEvent
+    let classEvent: SchoolClass
     @Environment(\.colorScheme) var colorScheme
     
     var body: some View {
@@ -478,7 +487,7 @@ struct ClassEventRow: View {
                     .font(.system(size: 20))
                     .foregroundColor(accentColor)
                 
-                if classEvent.isToday {
+                if Calendar.current.isDateInToday(classEvent.startDate) {
                     Circle()
                         .fill(Color.orange)
                         .frame(width: 8, height: 8)
@@ -491,7 +500,7 @@ struct ClassEventRow: View {
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(primaryTextColor)
                 
-                Text("\(classEvent.dateString) at \(classEvent.timeString)")
+                Text("\(classEvent.startDate, style: .date) at \(classEvent.startDate, style: .time)")
                     .font(.system(size: 14))
                     .foregroundColor(secondaryTextColor)
                 
@@ -504,7 +513,7 @@ struct ClassEventRow: View {
             
             Spacer()
             
-            if classEvent.isToday {
+            if Calendar.current.isDateInToday(classEvent.startDate) {
                 Text("Today")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(.orange)

@@ -2,7 +2,7 @@
 //  LocationManager.swift
 //  Yooh
 //
-//  Created by Derrick ng'ang'a on 06/08/2025.
+//  Enhanced with dynamic school location support
 //
 
 import Foundation
@@ -15,10 +15,15 @@ class LocationManager: NSObject, ObservableObject {
     @Published var currentLocation: CLLocation?
     @Published var isWithinSchool = false
     @Published var authorizationStatus: CLAuthorizationStatus = .notDetermined
+    @Published var locationError: String?
+    @Published var distanceFromSchool: Double?
     
-    // School coordinates (replace with actual school coordinates)
-    private let schoolLocation = CLLocation(latitude: -1.191397,longitude: 36.655940)
-    private let schoolRadius: CLLocationDistance = 500 // 100 meters radius
+    // Dynamic school location support
+    private var schoolLocationManager: SchoolLocationManager?
+    
+    // Fallback to your original coordinates if no dynamic location is set
+    private let defaultSchoolLocation = CLLocation(latitude: -1.191397, longitude: 36.655940)
+    private let defaultSchoolRadius: CLLocationDistance = 500
     
     override init() {
         super.init()
@@ -27,12 +32,16 @@ class LocationManager: NSObject, ObservableObject {
         locationManager.distanceFilter = 10
     }
     
+    func setSchoolLocationManager(_ manager: SchoolLocationManager) {
+        self.schoolLocationManager = manager
+    }
+    
     func requestLocationPermission() {
         switch authorizationStatus {
         case .notDetermined:
             locationManager.requestWhenInUseAuthorization()
         case .denied, .restricted:
-            break
+            locationError = "Location access denied. Please enable in Settings."
         case .authorizedWhenInUse, .authorizedAlways:
             startLocationUpdates()
         @unknown default:
@@ -52,10 +61,25 @@ class LocationManager: NSObject, ObservableObject {
     private func checkIfWithinSchool() {
         guard let currentLocation = currentLocation else {
             isWithinSchool = false
+            distanceFromSchool = nil
             return
         }
         
+        // Use dynamic school location if available, otherwise use default
+        let schoolLocation: CLLocation
+        let schoolRadius: CLLocationDistance
+        
+        if let schoolManager = schoolLocationManager,
+           let activeSchool = schoolManager.activeSchoolLocation {
+            schoolLocation = activeSchool.clLocation
+            schoolRadius = activeSchool.radius
+        } else {
+            schoolLocation = defaultSchoolLocation
+            schoolRadius = defaultSchoolRadius
+        }
+        
         let distance = currentLocation.distance(from: schoolLocation)
+        distanceFromSchool = distance
         isWithinSchool = distance <= schoolRadius
     }
 }
@@ -64,11 +88,12 @@ extension LocationManager: CLLocationManagerDelegate {
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let location = locations.last else { return }
         currentLocation = location
+        locationError = nil
         checkIfWithinSchool()
     }
     
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        print("Location manager failed with error: \(error.localizedDescription)")
+        locationError = "Location manager failed with error: \(error.localizedDescription)"
     }
     
     func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
@@ -80,6 +105,7 @@ extension LocationManager: CLLocationManagerDelegate {
         case .denied, .restricted:
             stopLocationUpdates()
             isWithinSchool = false
+            locationError = "Location access denied"
         case .notDetermined:
             break
         @unknown default:

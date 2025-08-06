@@ -6,45 +6,23 @@
 //
 
 import Foundation
-import EventKit
 import UserNotifications
 import Combine
+import SwiftData
 
 class CalendarManager: NSObject, ObservableObject {
-    private let eventStore = EKEventStore()
-    @Published var upcomingClasses: [ClassEvent] = []
-    @Published var hasCalendarAccess = false
+    @Published var upcomingClasses: [SchoolClass] = []
     @Published var hasNotificationAccess = false
-    
+    private var modelContext: ModelContext? = nil
+
     override init() {
         super.init()
-        requestCalendarAccess()
         requestNotificationAccess()
     }
-    
-    // MARK: - Calendar Access
-    
-    func requestCalendarAccess() {
-        switch EKEventStore.authorizationStatus(for: .event) {
-        case .notDetermined:
-            eventStore.requestAccess(to: .event) { [weak self] granted, error in
-                DispatchQueue.main.async {
-                    self?.hasCalendarAccess = granted
-                    if granted {
-                        self?.loadUpcomingClasses()
-                        self?.scheduleNotifications()
-                    }
-                }
-            }
-        case .authorized:
-            hasCalendarAccess = true
-            loadUpcomingClasses()
-            scheduleNotifications()
-        case .denied, .restricted:
-            hasCalendarAccess = false
-        @unknown default:
-            hasCalendarAccess = false
-        }
+
+    func setup(modelContext: ModelContext) {
+        self.modelContext = modelContext
+        loadUpcomingClasses()
     }
     
     // MARK: - Notification Access
@@ -57,41 +35,16 @@ class CalendarManager: NSObject, ObservableObject {
         }
     }
     
-    // MARK: - Load Classes from Calendar
+    // MARK: - Load Classes from SwiftData
     
     func loadUpcomingClasses() {
-        guard hasCalendarAccess else { return }
-        
-        let calendars = eventStore.calendars(for: .event)
-        let schoolCalendars = calendars.filter { calendar in
-            calendar.title.lowercased().contains("school") ||
-            calendar.title.lowercased().contains("class") ||
-            calendar.title.lowercased().contains("university") ||
-            calendar.title.lowercased().contains("college")
+        guard let modelContext = modelContext else { return }
+        let descriptor = FetchDescriptor<SchoolClass>(sortBy: [SortDescriptor(\SchoolClass.startDate, order: .forward)])
+        do {
+            upcomingClasses = try modelContext.fetch(descriptor)
+        } catch {
+            print("Fetch failed")
         }
-        
-        // If no school calendars found, use all calendars
-        let selectedCalendars = schoolCalendars.isEmpty ? calendars : schoolCalendars
-        
-        let startDate = Date()
-        let endDate = Calendar.current.date(byAdding: .day, value: 7, to: startDate) ?? startDate
-        
-        let predicate = eventStore.predicateForEvents(withStart: startDate, end: endDate, calendars: selectedCalendars)
-        let events = eventStore.events(matching: predicate)
-        
-        let classEvents = events.compactMap { event -> ClassEvent? in
-            guard !event.isAllDay else { return nil }
-            return ClassEvent(
-                id: event.eventIdentifier ?? UUID().uuidString,
-                title: event.title ?? "Class",
-                startDate: event.startDate,
-                endDate: event.endDate,
-                location: event.location,
-                notes: event.notes
-            )
-        }
-        
-        upcomingClasses = classEvents.sorted { $0.startDate < $1.startDate }
     }
     
     // MARK: - Schedule Notifications
@@ -107,7 +60,7 @@ class CalendarManager: NSObject, ObservableObject {
         }
     }
     
-    private func scheduleNotification(for classEvent: ClassEvent) {
+    private func scheduleNotification(for classEvent: SchoolClass) {
         let content = UNMutableNotificationContent()
         content.title = "Class Reminder"
         content.body = "You have '\(classEvent.title)' starting in 1 hour. Don't forget to sign attendance!"
@@ -139,32 +92,5 @@ class CalendarManager: NSObject, ObservableObject {
     func refreshData() {
         loadUpcomingClasses()
         scheduleNotifications()
-    }
-}
-
-// MARK: - Class Event Model
-
-struct ClassEvent: Identifiable, Codable {
-    let id: String
-    let title: String
-    let startDate: Date
-    let endDate: Date
-    let location: String?
-    let notes: String?
-    
-    var isToday: Bool {
-        Calendar.current.isDateInToday(startDate)
-    }
-    
-    var timeString: String {
-        let formatter = DateFormatter()
-        formatter.timeStyle = .short
-        return formatter.string(from: startDate)
-    }
-    
-    var dateString: String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        return formatter.string(from: startDate)
     }
 }
