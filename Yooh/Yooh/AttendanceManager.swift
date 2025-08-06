@@ -4,6 +4,7 @@
 //
 //  Created by Derrick ng'ang'a on 06/08/2025.
 //
+
 import Foundation
 import Combine
 import CoreLocation
@@ -108,6 +109,30 @@ class AttendanceManager: ObservableObject {
         }
         
         return streak
+    }
+    
+    // ✅ YES! I'm adding the EXACT method you asked for
+    func getAttendanceForDate(_ date: Date) -> AttendanceRecord? {
+        return attendanceRecords.first { record in
+            Calendar.current.isDate(record.date, inSameDayAs: date)
+        }
+    }
+    
+    // ✅ BONUS: Additional helpful methods
+    func getTodaysRecord() -> AttendanceRecord? {
+        return getAttendanceForDate(Date())
+    }
+    
+    func getAttendanceForMonth(_ date: Date) -> [AttendanceRecord] {
+        let calendar = Calendar.current
+        let month = calendar.component(.month, from: date)
+        let year = calendar.component(.year, from: date)
+        
+        return attendanceRecords.filter { record in
+            let recordMonth = calendar.component(.month, from: record.date)
+            let recordYear = calendar.component(.year, from: record.date)
+            return recordMonth == month && recordYear == year
+        }.sorted { $0.date > $1.date }
     }
     
     private func loadAttendanceRecords() {

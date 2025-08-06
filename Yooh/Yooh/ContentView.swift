@@ -1,21 +1,16 @@
-//
-//  ContentView.swift
-//  Yooh
-//
-//  Created by Derrick ng'ang'a on 06/08/2025.
-//
-
 import SwiftUI
 import CoreLocation
 
 struct ContentView: View {
     @StateObject private var locationManager = LocationManager()
     @StateObject private var attendanceManager = AttendanceManager()
-    @StateObject private var themeManager = ThemeManager() // ✅ ADDED
+    @StateObject private var themeManager = ThemeManager()
+    @StateObject private var calendarManager = CalendarManager()
     @State private var showingAlert = false
     @State private var alertMessage = ""
     @State private var showingSuccess = false
-    @State private var showingSettings = false // ✅ ADDED
+    @State private var showingSettings = false
+    @State private var showingCalendar = false
     @Environment(\.colorScheme) var colorScheme
     
     var body: some View {
@@ -30,10 +25,17 @@ struct ContentView: View {
             
             ScrollView {
                 VStack(spacing: 30) {
-                    // Header Section with Settings Button ✅ UPDATED
+                    // Header Section with Calendar and Settings Buttons
                     VStack(spacing: 15) {
                         HStack {
+                            Button(action: { showingCalendar = true }) {
+                                Image(systemName: "calendar")
+                                    .font(.system(size: 24))
+                                    .foregroundColor(primaryTextColor)
+                            }
+                            
                             Spacer()
+                            
                             Button(action: { showingSettings = true }) {
                                 Image(systemName: "gearshape.fill")
                                     .font(.system(size: 24))
@@ -92,8 +94,11 @@ struct ContentView: View {
                 .padding(.horizontal, 20)
             }
         }
-        .sheet(isPresented: $showingSettings) { // ✅ ADDED
+        .sheet(isPresented: $showingSettings) {
             SettingsView(themeManager: themeManager)
+        }
+        .sheet(isPresented: $showingCalendar) {
+            CalendarView(attendanceManager: attendanceManager, calendarManager: calendarManager)
         }
         .alert("Attendance Status", isPresented: $showingAlert) {
             Button("OK") { }
@@ -108,7 +113,7 @@ struct ContentView: View {
         }
     }
     
-    // MARK: - Color Computed Properties ✅ UPDATED to use themeManager
+    // MARK: - Color Computed Properties
     
     private var backgroundGradientColors: [Color] {
         let currentScheme = themeManager.isDarkMode ? ColorScheme.dark : ColorScheme.light
@@ -173,8 +178,7 @@ struct ContentView: View {
     }
 }
 
-// Keep all your existing structs (LocationStatusCard, AttendanceButton, etc.) exactly the same
-// Just add this at the end:
+// Keep all your existing structs (LocationStatusCard, AttendanceButton, etc.) exactly the same...
 
 struct LocationStatusCard: View {
     @ObservedObject var locationManager: LocationManager
