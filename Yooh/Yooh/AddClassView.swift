@@ -57,6 +57,7 @@ struct AddClassView: View {
             dayOfWeek: dayOfWeek
         )
         modelContext.insert(newClass)
+        NotificationManager.shared.scheduleNotification(for: newClass)
     }
 }
 
