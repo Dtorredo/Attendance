@@ -6,6 +6,21 @@
 //
 import SwiftUI
 
+enum ColorTheme: String, CaseIterable, Identifiable {
+    case blue, green, red, indigo
+
+    var id: Self { self }
+
+    var mainColor: Color {
+        switch self {
+        case .blue: return .blue
+        case .green: return .green
+        case .red: return .red
+        case .indigo: return .indigo
+        }
+    }
+}
+
 // MARK: - Theme Manager
 
 enum ThemeMode: String, CaseIterable {
@@ -24,10 +39,12 @@ enum ThemeMode: String, CaseIterable {
 
 class ThemeManager: ObservableObject {
     @Published var themeMode: ThemeMode = .system
+    @Published var colorTheme: ColorTheme = .blue
     @Published var isDarkMode: Bool = false
     
     private let userDefaults = UserDefaults.standard
     private let themeKey = "SelectedTheme"
+    private let colorThemeKey = "SelectedColorTheme"
     
     init() {
         loadTheme()
@@ -40,16 +57,29 @@ class ThemeManager: ObservableObject {
         updateTheme()
         applyTheme()
     }
+
+    func setColorTheme(_ theme: ColorTheme) {
+        colorTheme = theme
+        saveColorTheme()
+    }
     
     private func loadTheme() {
         if let savedTheme = userDefaults.string(forKey: themeKey),
            let theme = ThemeMode(rawValue: savedTheme) {
             themeMode = theme
         }
+        if let savedColorTheme = userDefaults.string(forKey: colorThemeKey),
+           let theme = ColorTheme(rawValue: savedColorTheme) {
+            colorTheme = theme
+        }
     }
     
     private func saveTheme() {
         userDefaults.set(themeMode.rawValue, forKey: themeKey)
+    }
+
+    private func saveColorTheme() {
+        userDefaults.set(colorTheme.rawValue, forKey: colorThemeKey)
     }
     
     private func updateTheme() {

@@ -22,6 +22,25 @@ struct SettingsView: View {
                     VStack(spacing: 25) {
                         // Theme Section
                         VStack(alignment: .leading, spacing: 15) {
+                            Text("Color Theme")
+                                .font(.system(size: 20, weight: .bold))
+                                .foregroundColor(primaryTextColor)
+                            Picker("Color Theme", selection: $themeManager.colorTheme) {
+                                ForEach(ColorTheme.allCases) { theme in
+                                    Text(theme.rawValue.capitalized).tag(theme)
+                                }
+                            }
+                            .pickerStyle(SegmentedPickerStyle())
+                        }
+                        .padding(20)
+                        .background(
+                            RoundedRectangle(cornerRadius: 20)
+                                .fill(.ultraThinMaterial)
+                                .shadow(color: shadowColor, radius: 10, x: 0, y: 5)
+                        )
+
+                        // Appearance Section
+                        VStack(alignment: .leading, spacing: 15) {
                             Text("Appearance")
                                 .font(.system(size: 20, weight: .bold))
                                 .foregroundColor(primaryTextColor)

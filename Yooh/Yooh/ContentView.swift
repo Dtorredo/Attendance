@@ -14,7 +14,10 @@ struct ContentView: View {
     @State private var showingSuccess = false
     @State private var showingSettings = false
     @State private var showingCalendar = false
+    @State private var showingClassSchedule = false
     @State private var showingSchoolSettings = false // ✅ NEW
+    @State private var automaticAttendanceManager: AutomaticAttendanceManager?
+    @State private var currentClass: SchoolClass?
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.modelContext) private var modelContext
 
@@ -35,6 +38,12 @@ struct ContentView: View {
                         HStack {
                             Button(action: { showingCalendar = true }) {
                                 Image(systemName: "calendar")
+                                    .font(.system(size: 24))
+                                    .foregroundColor(primaryTextColor)
+                            }
+
+                            Button(action: { showingClassSchedule = true }) {
+                                Image(systemName: "list.bullet.rectangle")
                                     .font(.system(size: 24))
                                     .foregroundColor(primaryTextColor)
                             }
@@ -91,9 +100,9 @@ struct ContentView: View {
                         LocationStatusCard(locationManager: locationManager)
                         AttendanceButton(
                             isWithinSchool: locationManager.isWithinSchool,
-                            hasSignedToday: attendanceManager.hasSignedToday(),
+                            hasSignedToday: currentClass != nil ? attendanceManager.hasSigned(for: currentClass!) : true,
                             action: signAttendance
-                        )
+                        ).disabled(currentClass == nil)
                     }
                     
                     // Stats Section
@@ -113,6 +122,9 @@ struct ContentView: View {
         .sheet(isPresented: $showingCalendar) {
             CalendarView(attendanceManager: attendanceManager, calendarManager: calendarManager)
         }
+        .sheet(isPresented: $showingClassSchedule) {
+            ClassScheduleView()
+        }
         .sheet(isPresented: $showingSchoolSettings) { // ✅ NEW
             SchoolSettingsView(schoolLocationManager: schoolLocationManager)
         }
@@ -129,20 +141,18 @@ struct ContentView: View {
             locationManager.setSchoolLocationManager(schoolLocationManager)
             locationManager.requestLocationPermission()
             attendanceManager.setup(modelContext: modelContext)
+            automaticAttendanceManager = AutomaticAttendanceManager(attendanceManager: attendanceManager, locationManager: locationManager, modelContext: modelContext)
+            automaticAttendanceManager?.start()
+            NotificationManager.shared.requestPermission()
+            fetchCurrentClass()
         }
     }
     
     // MARK: - Color Computed Properties (Keep all your existing color properties)
     
     private var backgroundGradientColors: [Color] {
-        let currentScheme = themeManager.isDarkMode ? ColorScheme.dark : ColorScheme.light
-        return currentScheme == .dark ? [
-            Color(red: 0.05, green: 0.05, blue: 0.15),
-            Color(red: 0.1, green: 0.1, blue: 0.25)
-        ] : [
-            Color(red: 0.1, green: 0.2, blue: 0.45),
-            Color(red: 0.2, green: 0.4, blue: 0.8)
-        ]
+        let color = themeManager.colorTheme.mainColor
+        return themeManager.isDarkMode ? [color.opacity(0.3), color.opacity(0.6)] : [color.opacity(0.6), color.opacity(0.9)]
     }
     
     private var headerCircleColors: [Color] {
@@ -173,13 +183,19 @@ struct ContentView: View {
     }
     
     private func signAttendance() {
+        guard let currentClass = currentClass else {
+            alertMessage = "You do not have a lesson at this time."
+            showingAlert = true
+            return
+        }
+
         guard locationManager.isWithinSchool else {
             alertMessage = "You must be within school premises to sign attendance."
             showingAlert = true
             return
         }
         
-        let success = attendanceManager.signAttendance(location: locationManager.currentLocation)
+        let success = attendanceManager.signAttendance(for: currentClass, location: locationManager.currentLocation)
         if success {
             withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
                 showingSuccess = true
@@ -191,8 +207,25 @@ struct ContentView: View {
                 }
             }
         } else {
-            alertMessage = "You have already signed attendance today."
+            alertMessage = "You have already signed attendance for this class today."
             showingAlert = true
+        }
+    }
+
+    private func fetchCurrentClass() {
+        let now = Date()
+        _ = Calendar.current
+        let currentDay = DayOfWeek(date: now)
+
+        let descriptor = FetchDescriptor<SchoolClass>(
+            predicate: #Predicate { $0.dayOfWeek == currentDay && $0.startDate <= now && $0.endDate >= now }
+        )
+
+        do {
+            let activeClasses = try modelContext.fetch(descriptor)
+            currentClass = activeClasses.first
+        } catch {
+            print("Fetch failed")
         }
     }
 }

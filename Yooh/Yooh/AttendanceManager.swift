@@ -19,10 +19,10 @@ class AttendanceManager: ObservableObject {
         fetchAttendanceRecords()
     }
 
-    func signAttendance(location: CLLocation?) -> Bool {
+    func signAttendance(for schoolClass: SchoolClass, location: CLLocation?) -> Bool {
         guard let modelContext = modelContext else { return false }
 
-        guard !hasSignedToday() else {
+        guard !hasSigned(for: schoolClass) else {
             return false
         }
 
@@ -34,16 +34,17 @@ class AttendanceManager: ObservableObject {
             latitude: currentLocation.coordinate.latitude,
             longitude: currentLocation.coordinate.longitude
         )
+        newRecord.schoolClass = schoolClass
 
         modelContext.insert(newRecord)
         fetchAttendanceRecords()
         return true
     }
 
-    func hasSignedToday() -> Bool {
+    func hasSigned(for schoolClass: SchoolClass) -> Bool {
         let today = Calendar.current.startOfDay(for: Date())
         return attendanceRecords.contains { record in
-            Calendar.current.isDate(record.timestamp, inSameDayAs: today)
+            record.schoolClass?.id == schoolClass.id && Calendar.current.isDate(record.timestamp, inSameDayAs: today)
         }
     }
 
