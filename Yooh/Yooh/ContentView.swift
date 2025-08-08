@@ -14,7 +14,6 @@ struct ContentView: View {
     @State private var showingSuccess = false
     @State private var showingSettings = false
     @State private var showingCalendar = false
-    @State private var showingClassSchedule = false
     @State private var showingSchoolSettings = false // ✅ NEW
     @State private var automaticAttendanceManager: AutomaticAttendanceManager?
     @State private var currentClass: SchoolClass?
@@ -38,12 +37,6 @@ struct ContentView: View {
                         HStack {
                             Button(action: { showingCalendar = true }) {
                                 Image(systemName: "calendar")
-                                    .font(.system(size: 24))
-                                    .foregroundColor(primaryTextColor)
-                            }
-
-                            Button(action: { showingClassSchedule = true }) {
-                                Image(systemName: "list.bullet.rectangle")
                                     .font(.system(size: 24))
                                     .foregroundColor(primaryTextColor)
                             }
@@ -120,10 +113,7 @@ struct ContentView: View {
             SettingsView(themeManager: themeManager)
         }
         .sheet(isPresented: $showingCalendar) {
-            CalendarView(attendanceManager: attendanceManager, calendarManager: calendarManager)
-        }
-        .sheet(isPresented: $showingClassSchedule) {
-            ClassScheduleView()
+            CalendarAndScheduleView(attendanceManager: attendanceManager, calendarManager: calendarManager, themeManager: themeManager)
         }
         .sheet(isPresented: $showingSchoolSettings) { // ✅ NEW
             SchoolSettingsView(schoolLocationManager: schoolLocationManager)
@@ -141,6 +131,7 @@ struct ContentView: View {
             locationManager.setSchoolLocationManager(schoolLocationManager)
             locationManager.requestLocationPermission()
             attendanceManager.setup(modelContext: modelContext)
+            calendarManager.setup(modelContext: modelContext)
             automaticAttendanceManager = AutomaticAttendanceManager(attendanceManager: attendanceManager, locationManager: locationManager, modelContext: modelContext)
             automaticAttendanceManager?.start()
             NotificationManager.shared.requestPermission()

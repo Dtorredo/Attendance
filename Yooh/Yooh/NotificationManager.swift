@@ -26,7 +26,7 @@ class NotificationManager {
         let content = UNMutableNotificationContent()
         content.title = "Upcoming Class: \(schoolClass.title)"
         content.body = "Your class at \(schoolClass.location ?? "N/A") is starting in 15 minutes."
-        content.sound = .default
+        content.sound = UNNotificationSound.default
 
         let triggerDate = Calendar.current.date(byAdding: .minute, value: -15, to: schoolClass.startDate)!
         let trigger = UNCalendarNotificationTrigger(dateMatching: Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: triggerDate), repeats: false)

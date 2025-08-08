@@ -8,11 +8,11 @@
 import SwiftUI
 
 @main
-struct AttendanceApp: App {
+struct YoohApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
-                // Remove the fixed color scheme to allow dynamic switching
         }
+        .modelContainer(for: SchoolClass.self)
     }
 }
