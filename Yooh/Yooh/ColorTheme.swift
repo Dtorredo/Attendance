@@ -49,6 +49,7 @@ class ThemeManager: ObservableObject {
     init() {
         loadTheme()
         updateTheme()
+        applyTheme() // Apply the theme on initialization
     }
     
     func setTheme(_ mode: ThemeMode) {

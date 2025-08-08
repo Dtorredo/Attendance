@@ -15,12 +15,16 @@ struct AddClassView: View {
     @State private var dayOfWeek = DayOfWeek.monday
     @State private var startTime = Date()
     @State private var endTime = Date()
+    @State private var location = ""
+    
+    var onAdd: () -> Void
     
     var body: some View {
         NavigationView {
             Form {
                 Section(header: Text("Class Details")) {
                     TextField("Class Title", text: $title)
+                    TextField("Location", text: $location)
                     Picker("Day of Week", selection: $dayOfWeek) {
                         ForEach(DayOfWeek.allCases) { day in
                             Text(day.rawValue.capitalized).tag(day)
@@ -54,14 +58,28 @@ struct AddClassView: View {
             title: title,
             startDate: startTime,
             endDate: endTime,
+            location: location,
             dayOfWeek: dayOfWeek
         )
         modelContext.insert(newClass)
         NotificationManager.shared.scheduleNotification(for: newClass)
+        onAdd()
     }
 }
 
 enum DayOfWeek: String, CaseIterable, Identifiable, Codable {
     case monday, tuesday, wednesday, thursday, friday, saturday, sunday
     var id: Self { self }
+    
+    var shortName: String {
+        switch self {
+        case .monday: return "Mon"
+        case .tuesday: return "Tue"
+        case .wednesday: return "Wed"
+        case .thursday: return "Thu"
+        case .friday: return "Fri"
+        case .saturday: return "Sat"
+        case .sunday: return "Sun"
+        }
+    }
 }

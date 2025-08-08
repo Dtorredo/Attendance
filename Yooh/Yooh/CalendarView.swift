@@ -1,3 +1,4 @@
+
 //
 //  CalendarView.swift
 //  Yooh
@@ -6,72 +7,51 @@
 //
 
 import SwiftUI
+import SwiftData
 
 struct CalendarView: View {
     @ObservedObject var attendanceManager: AttendanceManager
     @ObservedObject var calendarManager: CalendarManager
     @Environment(\.colorScheme) var colorScheme
-    @Environment(\.dismiss) var dismiss
-    @State private var showingAddClass = false
     
     @State private var selectedDate = Date()
     @State private var currentMonth = Date()
     
     var body: some View {
-        NavigationView {
-            ZStack {
-                // Background
-                LinearGradient(
-                    gradient: Gradient(colors: backgroundColors),
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                .ignoresSafeArea()
-                
-                ScrollView {
-                    VStack(spacing: 25) {
-                        // Calendar Grid
-                        CalendarGridView(
-                            currentMonth: $currentMonth,
-                            selectedDate: $selectedDate,
-                            attendanceRecords: attendanceManager.attendanceRecords
-                        )
-                        
-                        // Selected Date Info
-                        if let attendance = attendanceManager.getAttendanceForDate(selectedDate) {
-                            AttendanceDetailCard(attendance: attendance)
-                        } else {
-                            NoAttendanceCard(date: selectedDate)
-                        }
-                        
-                        // Upcoming Classes
-                        if !calendarManager.upcomingClasses.isEmpty {
-                            UpcomingClassesCard(classes: calendarManager.upcomingClasses)
-                        }
-                        
-                        Spacer(minLength: 50)
+        ZStack {
+            // Background
+            LinearGradient(
+                gradient: Gradient(colors: backgroundColors),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+            
+            ScrollView {
+                VStack(spacing: 25) {
+                    // Calendar Grid
+                    CalendarGridView(
+                        currentMonth: $currentMonth,
+                        selectedDate: $selectedDate,
+                        attendanceRecords: attendanceManager.attendanceRecords
+                    )
+                    
+                    // Selected Date Info
+                    if let attendance = attendanceManager.getAttendanceForDate(selectedDate) {
+                        AttendanceDetailCard(attendance: attendance)
+                    } else {
+                        NoAttendanceCard(date: selectedDate)
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 20)
-                }
-            }
-            .navigationTitle("Attendance Calendar")
-            .navigationBarTitleDisplayMode(.large)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: { showingAddClass = true }) {
-                        Image(systemName: "plus")
+                    
+                    // Upcoming Classes
+                    if !calendarManager.upcomingClasses.isEmpty {
+                        UpcomingClassesCard(classes: calendarManager.upcomingClasses)
                     }
+                    
+                    Spacer(minLength: 50)
                 }
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Done") {
-                        dismiss()
-                    }
-                    .foregroundColor(accentColor)
-                }
-            }
-            .sheet(isPresented: $showingAddClass) {
-                AddClassView()
+                .padding(.horizontal, 20)
+                .padding(.top, 20)
             }
         }
         .onAppear {
@@ -91,6 +71,12 @@ struct CalendarView: View {
     
     private var accentColor: Color {
         colorScheme == .dark ? Color.cyan : Color.white
+    }
+    
+    @Query(sort: [SortDescriptor<SchoolClass>(\SchoolClass.startDate, order: .forward)]) private var upcomingClasses: [SchoolClass]
+    
+    private func loadUpcomingClasses() {
+        // The @Query property wrapper should automatically update the view when the data changes.
     }
 }
 
