@@ -1,4 +1,3 @@
-
 //
 //  CalendarView.swift
 //  Yooh
@@ -12,71 +11,39 @@ import SwiftData
 struct CalendarView: View {
     @ObservedObject var attendanceManager: AttendanceManager
     @ObservedObject var calendarManager: CalendarManager
-    @Environment(\.colorScheme) var colorScheme
+    @ObservedObject var themeManager: ThemeManager
     
     @State private var selectedDate = Date()
     @State private var currentMonth = Date()
     
     var body: some View {
-        ZStack {
-            // Background
-            LinearGradient(
-                gradient: Gradient(colors: backgroundColors),
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
-            
-            ScrollView {
-                VStack(spacing: 25) {
-                    // Calendar Grid
-                    CalendarGridView(
-                        currentMonth: $currentMonth,
-                        selectedDate: $selectedDate,
-                        attendanceRecords: attendanceManager.attendanceRecords
-                    )
-                    
-                    // Selected Date Info
-                    if let attendance = attendanceManager.getAttendanceForDate(selectedDate) {
-                        AttendanceDetailCard(attendance: attendance)
-                    } else {
-                        NoAttendanceCard(date: selectedDate)
-                    }
-                    
-                    // Upcoming Classes
-                    if !calendarManager.upcomingClasses.isEmpty {
-                        UpcomingClassesCard(classes: calendarManager.upcomingClasses)
-                    }
-                    
-                    Spacer(minLength: 50)
+        ScrollView {
+            VStack(spacing: 25) {
+                CalendarGridView(
+                    currentMonth: $currentMonth,
+                    selectedDate: $selectedDate,
+                    attendanceRecords: attendanceManager.attendanceRecords,
+                    themeManager: themeManager
+                )
+                
+                if let attendance = attendanceManager.getAttendanceForDate(selectedDate) {
+                    AttendanceDetailCard(attendance: attendance)
+                } else {
+                    NoAttendanceCard(date: selectedDate, themeManager: themeManager)
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 20)
+                
+                if !calendarManager.upcomingClasses.isEmpty {
+                    UpcomingClassesCard(classes: calendarManager.upcomingClasses, themeManager: themeManager)
+                }
+                
+                Spacer(minLength: 50)
             }
+            .padding(.horizontal, 20)
+            .padding(.top, 20)
         }
         .onAppear {
             calendarManager.refreshData()
         }
-    }
-    
-    private var backgroundColors: [Color] {
-        colorScheme == .dark ? [
-            Color(red: 0.05, green: 0.05, blue: 0.15),
-            Color(red: 0.1, green: 0.1, blue: 0.25)
-        ] : [
-            Color(red: 0.1, green: 0.2, blue: 0.45),
-            Color(red: 0.2, green: 0.4, blue: 0.8)
-        ]
-    }
-    
-    private var accentColor: Color {
-        colorScheme == .dark ? Color.cyan : Color.white
-    }
-    
-    @Query(sort: [SortDescriptor<SchoolClass>(\SchoolClass.startDate, order: .forward)]) private var upcomingClasses: [SchoolClass]
-    
-    private func loadUpcomingClasses() {
-        // The @Query property wrapper should automatically update the view when the data changes.
     }
 }
 
@@ -84,6 +51,7 @@ struct CalendarGridView: View {
     @Binding var currentMonth: Date
     @Binding var selectedDate: Date
     let attendanceRecords: [AttendanceRecord]
+    @ObservedObject var themeManager: ThemeManager
     @Environment(\.colorScheme) var colorScheme
     
     private let calendar = Calendar.current
@@ -95,13 +63,11 @@ struct CalendarGridView: View {
     
     private var monthDays: [Date] {
         guard let monthInterval = calendar.dateInterval(of: .month, for: currentMonth) else { return [] }
-        
         let firstOfMonth = monthInterval.start
         let firstWeekday = calendar.component(.weekday, from: firstOfMonth)
         let startDate = calendar.date(byAdding: .day, value: -(firstWeekday - 1), to: firstOfMonth) ?? firstOfMonth
-        
         var days: [Date] = []
-        for i in 0..<42 { // 6 weeks * 7 days
+        for i in 0..<42 { 
             if let day = calendar.date(byAdding: .day, value: i, to: startDate) {
                 days.append(day)
             }
@@ -111,22 +77,17 @@ struct CalendarGridView: View {
     
     var body: some View {
         VStack(spacing: 20) {
-            // Month Navigation
             HStack {
                 Button(action: previousMonth) {
                     Image(systemName: "chevron.left")
                         .font(.system(size: 20, weight: .semibold))
                         .foregroundColor(accentColor)
                 }
-                
                 Spacer()
-                
                 Text(dateFormatter.string(from: currentMonth))
                     .font(.system(size: 24, weight: .bold))
                     .foregroundColor(primaryTextColor)
-                
                 Spacer()
-                
                 Button(action: nextMonth) {
                     Image(systemName: "chevron.right")
                         .font(.system(size: 20, weight: .semibold))
@@ -135,7 +96,6 @@ struct CalendarGridView: View {
             }
             .padding(.horizontal, 20)
             
-            // Weekday Headers
             HStack(spacing: 0) {
                 ForEach(["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], id: \.self) { day in
                     Text(day)
@@ -145,7 +105,6 @@ struct CalendarGridView: View {
                 }
             }
             
-            // Calendar Grid
             LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: 8) {
                 ForEach(monthDays, id: \.self) { date in
                     CalendarDayView(
@@ -153,7 +112,8 @@ struct CalendarGridView: View {
                         isSelected: calendar.isDate(date, inSameDayAs: selectedDate),
                         isCurrentMonth: calendar.isDate(date, equalTo: currentMonth, toGranularity: .month),
                         hasAttendance: hasAttendance(for: date),
-                        isToday: calendar.isDateInToday(date)
+                        isToday: calendar.isDateInToday(date),
+                        themeManager: themeManager
                     ) {
                         selectedDate = date
                     }
@@ -169,9 +129,9 @@ struct CalendarGridView: View {
     }
     
     private func hasAttendance(for date: Date) -> Bool {
-        return attendanceRecords.contains(where: { record in
+        return attendanceRecords.contains { record in
             calendar.isDate(record.timestamp, inSameDayAs: date)
-        })
+        }
     }
     
     private func previousMonth() {
@@ -187,15 +147,15 @@ struct CalendarGridView: View {
     }
     
     private var primaryTextColor: Color {
-        colorScheme == .dark ? Color.white : Color.white
+        colorScheme == .dark ? Color.white : Color.primary
     }
     
     private var secondaryTextColor: Color {
-        colorScheme == .dark ? Color.gray : Color.gray
+        colorScheme == .dark ? Color.gray : Color.secondary
     }
     
     private var accentColor: Color {
-        colorScheme == .dark ? Color.cyan : Color.blue
+        themeManager.colorTheme.mainColor
     }
     
     private var shadowColor: Color {
@@ -209,6 +169,7 @@ struct CalendarDayView: View {
     let isCurrentMonth: Bool
     let hasAttendance: Bool
     let isToday: Bool
+    @ObservedObject var themeManager: ThemeManager
     let action: () -> Void
     @Environment(\.colorScheme) var colorScheme
     
@@ -221,17 +182,14 @@ struct CalendarDayView: View {
     var body: some View {
         Button(action: action) {
             ZStack {
-                // Background
                 RoundedRectangle(cornerRadius: 12)
                     .fill(backgroundColor)
                     .frame(height: 44)
                 
-                // Day Number
                 Text(dayNumber)
                     .font(.system(size: 16, weight: isToday ? .bold : .medium))
                     .foregroundColor(textColor)
                 
-                // Attendance Indicator
                 if hasAttendance {
                     VStack {
                         Spacer()
@@ -248,9 +206,9 @@ struct CalendarDayView: View {
     
     private var backgroundColor: Color {
         if isSelected {
-            return colorScheme == .dark ? Color.cyan : Color.blue
+            return themeManager.colorTheme.mainColor
         } else if isToday {
-            return colorScheme == .dark ? Color.cyan.opacity(0.3) : Color.blue.opacity(0.3)
+            return themeManager.colorTheme.mainColor.opacity(0.3)
         } else {
             return Color.clear
         }
@@ -262,7 +220,7 @@ struct CalendarDayView: View {
         } else if !isCurrentMonth {
             return Color.gray.opacity(0.5)
         } else if isToday {
-            return colorScheme == .dark ? Color.cyan : Color.blue
+            return themeManager.colorTheme.mainColor
         } else {
             return colorScheme == .dark ? Color.white : Color.primary
         }
@@ -349,6 +307,7 @@ struct AttendanceDetailCard: View {
 
 struct NoAttendanceCard: View {
     let date: Date
+    @ObservedObject var themeManager: ThemeManager
     @Environment(\.colorScheme) var colorScheme
     
     private var isToday: Bool {
@@ -410,7 +369,7 @@ struct NoAttendanceCard: View {
         if isToday {
             return colorScheme == .dark ? Color.orange : Color.orange
         } else if isFuture {
-            return colorScheme == .dark ? Color.cyan : Color.blue
+            return themeManager.colorTheme.mainColor
         } else {
             return Color.gray
         }
@@ -430,7 +389,8 @@ struct NoAttendanceCard: View {
 }
 
 struct UpcomingClassesCard: View {
-    let classes: [SchoolClass]
+    let classes: [UpcomingClassViewModel]
+    @ObservedObject var themeManager: ThemeManager
     @Environment(\.colorScheme) var colorScheme
     
     var body: some View {
@@ -441,7 +401,7 @@ struct UpcomingClassesCard: View {
             
             VStack(spacing: 12) {
                 ForEach(classes.prefix(3)) { classEvent in
-                    ClassEventRow(classEvent: classEvent)
+                    ClassEventRow(classEvent: classEvent, themeManager: themeManager)
                 }
             }
         }
@@ -454,7 +414,7 @@ struct UpcomingClassesCard: View {
     }
     
     private var primaryTextColor: Color {
-        colorScheme == .dark ? Color.white : Color.white
+        colorScheme == .dark ? Color.white : Color.primary
     }
     
     private var shadowColor: Color {
@@ -463,7 +423,8 @@ struct UpcomingClassesCard: View {
 }
 
 struct ClassEventRow: View {
-    let classEvent: SchoolClass
+    let classEvent: UpcomingClassViewModel
+    @ObservedObject var themeManager: ThemeManager
     @Environment(\.colorScheme) var colorScheme
     
     var body: some View {
@@ -473,7 +434,7 @@ struct ClassEventRow: View {
                     .font(.system(size: 20))
                     .foregroundColor(accentColor)
                 
-                if Calendar.current.isDateInToday(classEvent.startDate) {
+                if Calendar.current.isDateInToday(classEvent.nextOccurrence) {
                     Circle()
                         .fill(Color.orange)
                         .frame(width: 8, height: 8)
@@ -486,7 +447,7 @@ struct ClassEventRow: View {
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(primaryTextColor)
                 
-                Text("\(classEvent.startDate, style: .date) at \(classEvent.startDate, style: .time)")
+                Text("\(classEvent.nextOccurrence, style: .date) at \(classEvent.nextOccurrence, style: .time)")
                     .font(.system(size: 14))
                     .foregroundColor(secondaryTextColor)
                 
@@ -499,7 +460,7 @@ struct ClassEventRow: View {
             
             Spacer()
             
-            if Calendar.current.isDateInToday(classEvent.startDate) {
+            if Calendar.current.isDateInToday(classEvent.nextOccurrence) {
                 Text("Today")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(.orange)
@@ -515,7 +476,7 @@ struct ClassEventRow: View {
     }
     
     private var accentColor: Color {
-        colorScheme == .dark ? Color.cyan : Color.blue
+        themeManager.colorTheme.mainColor
     }
     
     private var primaryTextColor: Color {

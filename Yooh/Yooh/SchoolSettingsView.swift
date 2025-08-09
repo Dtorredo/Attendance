@@ -10,93 +10,80 @@ import CoreLocation
 
 struct SchoolSettingsView: View {
     @ObservedObject var schoolLocationManager: SchoolLocationManager
+    @ObservedObject var themeManager: ThemeManager
     @Environment(\.dismiss) var dismiss
-    @Environment(\.colorScheme) var colorScheme
     
     @State private var showingAddSchool = false
-    @State private var newSchoolName = ""
-    @State private var newSchoolAddress = ""
-    @State private var newSchoolLatitude = ""
-    @State private var newSchoolLongitude = ""
-    @State private var newSchoolRadius = "500"
     
     var body: some View {
-        NavigationView {
-            ZStack {
-                // Background
-                LinearGradient(
-                    gradient: Gradient(colors: backgroundColors),
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                .ignoresSafeArea()
-                
-                ScrollView {
-                    VStack(spacing: 25) {
-                        // Current School Section
-                        if let activeSchool = schoolLocationManager.activeSchoolLocation {
-                            CurrentSchoolCard(school: activeSchool)
-                        }
-                        
-                        // All Schools Section
-                        VStack(alignment: .leading, spacing: 15) {
-                            HStack {
-                                Text("All Schools")
-                                    .font(.system(size: 20, weight: .bold))
-                                    .foregroundColor(primaryTextColor)
-                                
-                                Spacer()
-                                
-                                Button(action: { showingAddSchool = true }) {
-                                    Image(systemName: "plus.circle.fill")
-                                        .font(.system(size: 24))
-                                        .foregroundColor(accentColor)
-                                }
-                            }
+        // This view is now presented inside the SettingsTabView, which has its own NavigationView.
+        // So we remove the NavigationView from here to avoid a nested one.
+        ZStack {
+            // Background
+            LinearGradient(
+                gradient: Gradient(colors: backgroundColors),
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+            
+            ScrollView {
+                VStack(spacing: 25) {
+                    // Current School Section
+                    if let activeSchool = schoolLocationManager.activeSchoolLocation {
+                        CurrentSchoolCard(school: activeSchool)
+                    }
+                    
+                    // All Schools Section
+                    VStack(alignment: .leading, spacing: 15) {
+                        HStack {
+                            Text("All Schools")
+                                .font(.system(size: 20, weight: .bold))
+                                .foregroundColor(primaryTextColor)
                             
-                            if schoolLocationManager.schoolLocations.isEmpty {
-                                EmptySchoolsView()
-                            } else {
-                                VStack(spacing: 12) {
-                                    ForEach(schoolLocationManager.schoolLocations) { school in
-                                        SchoolLocationRow(
-                                            school: school,
-                                            isActive: school.id == schoolLocationManager.activeSchoolLocation?.id,
-                                            onSelect: {
-                                                schoolLocationManager.setActiveSchool(school)
-                                            },
-                                            onDelete: {
-                                                schoolLocationManager.deleteSchoolLocation(school)
-                                            }
-                                        )
-                                    }
+                            Spacer()
+                            
+                            Button(action: { showingAddSchool = true }) {
+                                Image(systemName: "plus.circle.fill")
+                                    .font(.system(size: 24))
+                                    .foregroundColor(themeManager.colorTheme.mainColor)
+                            }
+                        }
+                        
+                        if schoolLocationManager.schoolLocations.isEmpty {
+                            EmptySchoolsView()
+                        } else {
+                            VStack(spacing: 12) {
+                                ForEach(schoolLocationManager.schoolLocations) { school in
+                                    SchoolLocationRow(
+                                        school: school,
+                                        isActive: school.id == schoolLocationManager.activeSchoolLocation?.id,
+                                        onSelect: {
+                                            schoolLocationManager.setActiveSchool(school)
+                                        },
+                                        onDelete: {
+                                            schoolLocationManager.deleteSchoolLocation(school)
+                                        }
+                                    )
                                 }
                             }
                         }
-                        .padding(20)
-                        .background(
-                            RoundedRectangle(cornerRadius: 20)
-                                .fill(.ultraThinMaterial)
-                                .shadow(color: shadowColor, radius: 10, x: 0, y: 5)
-                        )
-                        
-                        Spacer(minLength: 50)
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 20)
+                    .padding(20)
+                    .background(
+                        RoundedRectangle(cornerRadius: 20)
+                            .fill(.ultraThinMaterial)
+                            .shadow(color: shadowColor, radius: 10, x: 0, y: 5)
+                    )
+                    
+                    Spacer(minLength: 50)
                 }
-            }
-            .navigationTitle("School Settings")
-            .navigationBarTitleDisplayMode(.large)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") {
-                        dismiss()
-                    }
-                    .foregroundColor(accentColor)
-                }
+                .padding(.horizontal, 20)
+                .padding(.top, 20)
             }
         }
+        .navigationTitle("School Settings")
+        .navigationBarTitleDisplayMode(.large)
         .sheet(isPresented: $showingAddSchool) {
             AddSchoolView(schoolLocationManager: schoolLocationManager)
         }
@@ -105,25 +92,15 @@ struct SchoolSettingsView: View {
     // MARK: - Color Properties
     
     private var backgroundColors: [Color] {
-        colorScheme == .dark ? [
-            Color(red: 0.05, green: 0.05, blue: 0.15),
-            Color(red: 0.1, green: 0.1, blue: 0.25)
-        ] : [
-            Color(red: 0.1, green: 0.2, blue: 0.45),
-            Color(red: 0.2, green: 0.4, blue: 0.8)
-        ]
+        themeManager.isDarkMode ? [themeManager.colorTheme.mainColor.opacity(0.6), .black] : [themeManager.colorTheme.mainColor.opacity(0.8), .white]
     }
     
     private var primaryTextColor: Color {
-        colorScheme == .dark ? Color.white : Color.white
+        themeManager.isDarkMode ? .white : .primary
     }
     
     private var shadowColor: Color {
-        colorScheme == .dark ? Color.black.opacity(0.3) : Color.black.opacity(0.1)
-    }
-    
-    private var accentColor: Color {
-        colorScheme == .dark ? Color.cyan : Color.white
+        themeManager.isDarkMode ? Color.black.opacity(0.3) : Color.black.opacity(0.1)
     }
 }
 
@@ -344,5 +321,3 @@ struct EmptySchoolsView: View {
         colorScheme == .dark ? Color.gray : Color.secondary
     }
 }
-
-

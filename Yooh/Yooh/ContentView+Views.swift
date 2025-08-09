@@ -109,6 +109,7 @@ struct LocationStatusCard: View {
 }
 
 struct AttendanceButton: View {
+    let hasActiveClass: Bool
     let isWithinSchool: Bool
     let hasSignedToday: Bool
     let action: () -> Void
@@ -117,6 +118,9 @@ struct AttendanceButton: View {
     @State private var isPressed = false
     
     var buttonText: String {
+        if !hasActiveClass {
+            return "No attendance to sign"
+        }
         if hasSignedToday {
             return "Attendance Completed ✓"
         } else if isWithinSchool {
@@ -127,6 +131,9 @@ struct AttendanceButton: View {
     }
     
     var buttonColors: [Color] {
+        if !hasActiveClass {
+            return colorScheme == .dark ? [Color.gray.opacity(0.6), Color.gray.opacity(0.4)] : [Color.gray, Color.gray.opacity(0.8)]
+        }
         if hasSignedToday {
             return colorScheme == .dark ? [Color.mint, Color.mint.opacity(0.8)] : [Color.green, Color.green.opacity(0.8)]
         } else if isWithinSchool {
@@ -137,6 +144,9 @@ struct AttendanceButton: View {
     }
     
     var shadowColor: Color {
+        if !hasActiveClass {
+            return Color.gray.opacity(0.2)
+        }
         if hasSignedToday {
             return (colorScheme == .dark ? Color.mint : Color.green).opacity(0.4)
         } else if isWithinSchool {
@@ -149,7 +159,7 @@ struct AttendanceButton: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 15) {
-                Image(systemName: hasSignedToday ? "checkmark.circle.fill" : "location.circle.fill")
+                Image(systemName: !hasActiveClass ? "xmark.circle.fill" : (hasSignedToday ? "checkmark.circle.fill" : "location.circle.fill"))
                     .font(.system(size: 24, weight: .semibold))
                 
                 Text(buttonText)
@@ -171,7 +181,7 @@ struct AttendanceButton: View {
             .scaleEffect(isPressed ? 0.95 : 1.0)
             .shadow(color: shadowColor, radius: 15, x: 0, y: 8)
         }
-        .disabled(!isWithinSchool || hasSignedToday)
+        .disabled(!hasActiveClass || !isWithinSchool || hasSignedToday)
         .onLongPressGesture(minimumDuration: 0, maximumDistance: .infinity, pressing: { pressing in
             withAnimation(.easeInOut(duration: 0.1)) {
                 isPressed = pressing
