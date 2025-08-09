@@ -119,14 +119,8 @@ struct SettingsView: View {
     // MARK: - Color Properties
     
     private var backgroundColors: [Color] {
-        let currentScheme = themeManager.isDarkMode ? ColorScheme.dark : ColorScheme.light
-        return currentScheme == .dark ? [
-            Color(red: 0.05, green: 0.05, blue: 0.15),
-            Color(red: 0.1, green: 0.1, blue: 0.25)
-        ] : [
-            Color(red: 0.1, green: 0.2, blue: 0.45),
-            Color(red: 0.2, green: 0.4, blue: 0.8)
-        ]
+        let color = themeManager.colorTheme.mainColor
+        return themeManager.isDarkMode ? [color.opacity(0.6), .black] : [color.opacity(0.8), .white]
     }
     
     private var primaryTextColor: Color {

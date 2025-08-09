@@ -61,8 +61,8 @@ struct ClassScheduleView: View {
                 .listRowSeparator(.hidden)
             }
             .listStyle(.plain)
+            .scrollContentBackground(.hidden)
         }
-        .background(Color.adaptiveBackground.edgesIgnoringSafeArea(.all))
         .navigationTitle("Class Schedule")
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
