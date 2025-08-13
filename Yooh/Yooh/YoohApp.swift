@@ -13,6 +13,6 @@ struct YoohApp: App {
         WindowGroup {
             ContentView()
         }
-        .modelContainer(for: SchoolClass.self)
+        .modelContainer(for: [SchoolClass.self, Assignment.self])
     }
 }

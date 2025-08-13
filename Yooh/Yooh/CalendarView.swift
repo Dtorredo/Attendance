@@ -11,47 +11,85 @@ import SwiftData
 struct CalendarView: View {
     @ObservedObject var attendanceManager: AttendanceManager
     @ObservedObject var calendarManager: CalendarManager
-    @ObservedObject var themeManager: ThemeManager
+    @Environment(\.colorScheme) var colorScheme
     
     @State private var selectedDate = Date()
     @State private var currentMonth = Date()
+    @State private var showingAddClass = false
     
     var body: some View {
-        ScrollView {
-            VStack(spacing: 25) {
-                CalendarGridView(
-                    currentMonth: $currentMonth,
-                    selectedDate: $selectedDate,
-                    attendanceRecords: attendanceManager.attendanceRecords,
-                    themeManager: themeManager
-                )
-                
-                if let attendance = attendanceManager.getAttendanceForDate(selectedDate) {
-                    AttendanceDetailCard(attendance: attendance)
-                } else {
-                    NoAttendanceCard(date: selectedDate, themeManager: themeManager)
+        ZStack {
+            // Background
+            LinearGradient(
+                gradient: Gradient(colors: backgroundColors),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+            
+            ScrollView {
+                VStack(spacing: 25) {
+                    // Calendar Grid
+                    CalendarGridView(
+                        currentMonth: $currentMonth,
+                        selectedDate: $selectedDate,
+                        scheduledDates: calendarManager.scheduledDates,
+                        onDateSelected: { date in
+                            selectedDate = date
+                            if Calendar.current.isDateInToday(date) || date > Date() { // Allow adding classes to today or future dates
+                                showingAddClass = true
+                            }
+                        },
+                        onMonthChanged: { newMonth in
+                            calendarManager.refreshData(for: newMonth)
+                        }
+                    )
+                    
+                    // Selected Date Info
+                    if let attendance = attendanceManager.getAttendanceForDate(selectedDate) {
+                        AttendanceDetailCard(attendance: attendance)
+                    } else {
+                        NoAttendanceCard(date: selectedDate)
+                    }
+                    
+                    
+                    Spacer(minLength: 50)
                 }
-                
-                if !calendarManager.upcomingClasses.isEmpty {
-                    UpcomingClassesCard(classes: calendarManager.upcomingClasses, themeManager: themeManager)
-                }
-                
-                Spacer(minLength: 50)
+                .padding(.horizontal, 20)
+                .padding(.top, 20)
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 20)
         }
         .onAppear {
-            calendarManager.refreshData()
+            calendarManager.refreshData(for: currentMonth)
+        }
+        .sheet(isPresented: $showingAddClass) {
+            AddClassView(date: selectedDate)
         }
     }
+    
+    private var backgroundColors: [Color] {
+        colorScheme == .dark ? [
+            Color(red: 0.05, green: 0.05, blue: 0.15),
+            Color(red: 0.1, green: 0.1, blue: 0.25)
+        ] : [
+            Color(red: 0.1, green: 0.2, blue: 0.45),
+            Color(red: 0.2, green: 0.4, blue: 0.8)
+        ]
+    }
+    
+    private var accentColor: Color {
+        colorScheme == .dark ? Color.cyan : Color.white
+    }
+    
+    
 }
 
 struct CalendarGridView: View {
     @Binding var currentMonth: Date
     @Binding var selectedDate: Date
-    let attendanceRecords: [AttendanceRecord]
-    @ObservedObject var themeManager: ThemeManager
+    let scheduledDates: [Date]
+    let onDateSelected: (Date) -> Void
+    let onMonthChanged: (Date) -> Void
     @Environment(\.colorScheme) var colorScheme
     
     private let calendar = Calendar.current
@@ -63,11 +101,13 @@ struct CalendarGridView: View {
     
     private var monthDays: [Date] {
         guard let monthInterval = calendar.dateInterval(of: .month, for: currentMonth) else { return [] }
+        
         let firstOfMonth = monthInterval.start
         let firstWeekday = calendar.component(.weekday, from: firstOfMonth)
         let startDate = calendar.date(byAdding: .day, value: -(firstWeekday - 1), to: firstOfMonth) ?? firstOfMonth
+        
         var days: [Date] = []
-        for i in 0..<42 { 
+        for i in 0..<42 { // 6 weeks * 7 days
             if let day = calendar.date(byAdding: .day, value: i, to: startDate) {
                 days.append(day)
             }
@@ -77,17 +117,22 @@ struct CalendarGridView: View {
     
     var body: some View {
         VStack(spacing: 20) {
+            // Month Navigation
             HStack {
                 Button(action: previousMonth) {
                     Image(systemName: "chevron.left")
                         .font(.system(size: 20, weight: .semibold))
                         .foregroundColor(accentColor)
                 }
+                
                 Spacer()
+                
                 Text(dateFormatter.string(from: currentMonth))
                     .font(.system(size: 24, weight: .bold))
                     .foregroundColor(primaryTextColor)
+                
                 Spacer()
+                
                 Button(action: nextMonth) {
                     Image(systemName: "chevron.right")
                         .font(.system(size: 20, weight: .semibold))
@@ -96,6 +141,7 @@ struct CalendarGridView: View {
             }
             .padding(.horizontal, 20)
             
+            // Weekday Headers
             HStack(spacing: 0) {
                 ForEach(["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], id: \.self) { day in
                     Text(day)
@@ -105,17 +151,17 @@ struct CalendarGridView: View {
                 }
             }
             
+            // Calendar Grid
             LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: 8) {
                 ForEach(monthDays, id: \.self) { date in
                     CalendarDayView(
                         date: date,
                         isSelected: calendar.isDate(date, inSameDayAs: selectedDate),
                         isCurrentMonth: calendar.isDate(date, equalTo: currentMonth, toGranularity: .month),
-                        hasAttendance: hasAttendance(for: date),
-                        isToday: calendar.isDateInToday(date),
-                        themeManager: themeManager
+                        hasClass: hasClass(for: date),
+                        isToday: calendar.isDateInToday(date)
                     ) {
-                        selectedDate = date
+                        onDateSelected(date)
                     }
                 }
             }
@@ -128,34 +174,36 @@ struct CalendarGridView: View {
         )
     }
     
-    private func hasAttendance(for date: Date) -> Bool {
-        return attendanceRecords.contains { record in
-            calendar.isDate(record.timestamp, inSameDayAs: date)
+    private func hasClass(for date: Date) -> Bool {
+        return scheduledDates.contains { scheduledDate in
+            calendar.isDate(scheduledDate, inSameDayAs: date)
         }
     }
     
     private func previousMonth() {
         withAnimation(.easeInOut(duration: 0.3)) {
             currentMonth = calendar.date(byAdding: .month, value: -1, to: currentMonth) ?? currentMonth
+            onMonthChanged(currentMonth)
         }
     }
     
     private func nextMonth() {
         withAnimation(.easeInOut(duration: 0.3)) {
             currentMonth = calendar.date(byAdding: .month, value: 1, to: currentMonth) ?? currentMonth
+            onMonthChanged(currentMonth)
         }
     }
     
     private var primaryTextColor: Color {
-        colorScheme == .dark ? Color.white : Color.primary
+        colorScheme == .dark ? Color.white : Color.white
     }
     
     private var secondaryTextColor: Color {
-        colorScheme == .dark ? Color.gray : Color.secondary
+        colorScheme == .dark ? Color.gray : Color.gray
     }
     
     private var accentColor: Color {
-        themeManager.colorTheme.mainColor
+        colorScheme == .dark ? Color.cyan : Color.blue
     }
     
     private var shadowColor: Color {
@@ -167,9 +215,8 @@ struct CalendarDayView: View {
     let date: Date
     let isSelected: Bool
     let isCurrentMonth: Bool
-    let hasAttendance: Bool
+    let hasClass: Bool
     let isToday: Bool
-    @ObservedObject var themeManager: ThemeManager
     let action: () -> Void
     @Environment(\.colorScheme) var colorScheme
     
@@ -182,19 +229,22 @@ struct CalendarDayView: View {
     var body: some View {
         Button(action: action) {
             ZStack {
+                // Background
                 RoundedRectangle(cornerRadius: 12)
                     .fill(backgroundColor)
                     .frame(height: 44)
                 
+                // Day Number
                 Text(dayNumber)
                     .font(.system(size: 16, weight: isToday ? .bold : .medium))
                     .foregroundColor(textColor)
                 
-                if hasAttendance {
+                // Class Indicator
+                if hasClass {
                     VStack {
                         Spacer()
                         Circle()
-                            .fill(attendanceColor)
+                            .fill(Color.green)
                             .frame(width: 6, height: 6)
                             .offset(y: -4)
                     }
@@ -206,9 +256,11 @@ struct CalendarDayView: View {
     
     private var backgroundColor: Color {
         if isSelected {
-            return themeManager.colorTheme.mainColor
+            return colorScheme == .dark ? Color.cyan : Color.blue
         } else if isToday {
-            return themeManager.colorTheme.mainColor.opacity(0.3)
+            return colorScheme == .dark ? Color.cyan.opacity(0.3) : Color.blue.opacity(0.3)
+        } else if hasClass {
+            return Color.green.opacity(0.3)
         } else {
             return Color.clear
         }
@@ -220,17 +272,9 @@ struct CalendarDayView: View {
         } else if !isCurrentMonth {
             return Color.gray.opacity(0.5)
         } else if isToday {
-            return themeManager.colorTheme.mainColor
+            return colorScheme == .dark ? Color.cyan : Color.blue
         } else {
             return colorScheme == .dark ? Color.white : Color.primary
-        }
-    }
-    
-    private var attendanceColor: Color {
-        if isSelected {
-            return Color.white
-        } else {
-            return colorScheme == .dark ? Color.mint : Color.green
         }
     }
 }
@@ -307,7 +351,6 @@ struct AttendanceDetailCard: View {
 
 struct NoAttendanceCard: View {
     let date: Date
-    @ObservedObject var themeManager: ThemeManager
     @Environment(\.colorScheme) var colorScheme
     
     private var isToday: Bool {
@@ -369,7 +412,7 @@ struct NoAttendanceCard: View {
         if isToday {
             return colorScheme == .dark ? Color.orange : Color.orange
         } else if isFuture {
-            return themeManager.colorTheme.mainColor
+            return colorScheme == .dark ? Color.cyan : Color.blue
         } else {
             return Color.gray
         }
@@ -388,106 +431,4 @@ struct NoAttendanceCard: View {
     }
 }
 
-struct UpcomingClassesCard: View {
-    let classes: [UpcomingClassViewModel]
-    @ObservedObject var themeManager: ThemeManager
-    @Environment(\.colorScheme) var colorScheme
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 15) {
-            Text("Upcoming Classes")
-                .font(.system(size: 20, weight: .bold))
-                .foregroundColor(primaryTextColor)
-            
-            VStack(spacing: 12) {
-                ForEach(classes.prefix(3)) { classEvent in
-                    ClassEventRow(classEvent: classEvent, themeManager: themeManager)
-                }
-            }
-        }
-        .padding(20)
-        .background(
-            RoundedRectangle(cornerRadius: 20)
-                .fill(.ultraThinMaterial)
-                .shadow(color: shadowColor, radius: 10, x: 0, y: 5)
-        )
-    }
-    
-    private var primaryTextColor: Color {
-        colorScheme == .dark ? Color.white : Color.primary
-    }
-    
-    private var shadowColor: Color {
-        colorScheme == .dark ? Color.black.opacity(0.3) : Color.black.opacity(0.1)
-    }
-}
 
-struct ClassEventRow: View {
-    let classEvent: UpcomingClassViewModel
-    @ObservedObject var themeManager: ThemeManager
-    @Environment(\.colorScheme) var colorScheme
-    
-    var body: some View {
-        HStack(spacing: 15) {
-            VStack {
-                Image(systemName: "calendar")
-                    .font(.system(size: 20))
-                    .foregroundColor(accentColor)
-                
-                if Calendar.current.isDateInToday(classEvent.nextOccurrence) {
-                    Circle()
-                        .fill(Color.orange)
-                        .frame(width: 8, height: 8)
-                }
-            }
-            .frame(width: 30)
-            
-            VStack(alignment: .leading, spacing: 4) {
-                Text(classEvent.title)
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(primaryTextColor)
-                
-                Text("\(classEvent.nextOccurrence, style: .date) at \(classEvent.nextOccurrence, style: .time)")
-                    .font(.system(size: 14))
-                    .foregroundColor(secondaryTextColor)
-                
-                if let location = classEvent.location {
-                    Text(location)
-                        .font(.system(size: 12))
-                        .foregroundColor(tertiaryTextColor)
-                }
-            }
-            
-            Spacer()
-            
-            if Calendar.current.isDateInToday(classEvent.nextOccurrence) {
-                Text("Today")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(.orange)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(Color.orange.opacity(0.2))
-                    )
-            }
-        }
-        .padding(.vertical, 8)
-    }
-    
-    private var accentColor: Color {
-        themeManager.colorTheme.mainColor
-    }
-    
-    private var primaryTextColor: Color {
-        colorScheme == .dark ? Color.white : Color.primary
-    }
-    
-    private var secondaryTextColor: Color {
-        colorScheme == .dark ? Color.gray : Color.secondary
-    }
-    
-    private var tertiaryTextColor: Color {
-        colorScheme == .dark ? Color.gray.opacity(0.7) : Color.secondary.opacity(0.7)
-    }
-}

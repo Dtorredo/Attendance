@@ -37,7 +37,7 @@ struct CalendarAndScheduleView: View {
 
                     // The content being switched
                     if selectedView == 0 {
-                        CalendarView(attendanceManager: attendanceManager, calendarManager: calendarManager, themeManager: themeManager)
+                        CalendarView(attendanceManager: attendanceManager, calendarManager: calendarManager)
                     } else {
                         ClassScheduleView()
                             .environmentObject(themeManager)
