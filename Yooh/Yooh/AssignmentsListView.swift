@@ -44,6 +44,9 @@ struct AssignmentsListView: View {
                                     .foregroundColor(assignment.isCompleted ? .green : .gray)
                             }
                         }
+                        .padding()
+                        .background(.ultraThinMaterial)
+                        .cornerRadius(12)
                     }
                     .onDelete(perform: deleteItems)
                 }

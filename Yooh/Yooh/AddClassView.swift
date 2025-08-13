@@ -17,7 +17,8 @@ struct AddClassView: View {
     @State private var endTime = Date()
     @State private var location = ""
     
-    var onAdd: () -> Void
+    var date: Date
+    var onAdd: (() -> Void)? = nil
     
     var body: some View {
         NavigationView {
@@ -25,11 +26,6 @@ struct AddClassView: View {
                 Section(header: Text("Class Details")) {
                     TextField("Class Title", text: $title)
                     TextField("Location", text: $location)
-                    Picker("Day of Week", selection: $dayOfWeek) {
-                        ForEach(DayOfWeek.allCases) { day in
-                            Text(day.rawValue.capitalized).tag(day)
-                        }
-                    }
                 }
                 
                 Section(header: Text("Class Time")) {
@@ -49,7 +45,16 @@ struct AddClassView: View {
             .navigationBarItems(leading: Button("Cancel") {
                 dismiss()
             })
+            .onAppear(perform: setupView)
         }
+    }
+    
+    private func setupView() {
+        let calendar = Calendar.current
+        let weekday = calendar.component(.weekday, from: date)
+        dayOfWeek = DayOfWeek(weekday: weekday) ?? .monday
+        startTime = date
+        endTime = date
     }
     
     private func addClass() {
@@ -63,13 +68,26 @@ struct AddClassView: View {
         )
         modelContext.insert(newClass)
         NotificationManager.shared.scheduleNotification(for: newClass)
-        onAdd()
+        onAdd?()
     }
 }
 
 enum DayOfWeek: String, CaseIterable, Identifiable, Codable {
     case monday, tuesday, wednesday, thursday, friday, saturday, sunday
     var id: Self { self }
+    
+    init?(weekday: Int) {
+        switch weekday {
+        case 1: self = .sunday
+        case 2: self = .monday
+        case 3: self = .tuesday
+        case 4: self = .wednesday
+        case 5: self = .thursday
+        case 6: self = .friday
+        case 7: self = .saturday
+        default: return nil
+        }
+    }
     
     var shortName: String {
         switch self {

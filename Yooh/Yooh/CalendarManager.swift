@@ -2,16 +2,8 @@ import Foundation
 import Combine
 import SwiftData
 
-// A new struct to hold a class and its next calculated occurrence.
-struct UpcomingClassViewModel: Identifiable, Hashable {
-    let id: String
-    let title: String
-    let location: String?
-    let nextOccurrence: Date
-}
-
 class CalendarManager: NSObject, ObservableObject {
-    @Published var upcomingClasses: [UpcomingClassViewModel] = []
+    @Published var scheduledDates: [Date] = []
     private var modelContext: ModelContext? = nil
 
     func setup(modelContext: ModelContext) {
@@ -19,59 +11,42 @@ class CalendarManager: NSObject, ObservableObject {
         refreshData()
     }
     
-    func refreshData() {
+    func refreshData(for date: Date = Date()) {
         guard let modelContext = modelContext else { return }
         
-        // 1. Fetch all class templates from the database.
         let descriptor = FetchDescriptor<SchoolClass>()
         guard let allClassTemplates = try? modelContext.fetch(descriptor) else {
             return
         }
         
-        let now = Date()
         let calendar = Calendar.current
-        var calculatedUpcomingClasses: [UpcomingClassViewModel] = []
+        guard let monthInterval = calendar.dateInterval(of: .month, for: date) else { return }
         
-        // 2. For each template, calculate its next real-world occurrence.
+        var allOccurrences: [Date] = []
         for classTemplate in allClassTemplates {
-            guard let nextDate = getNextOccurrence(for: classTemplate, after: now, calendar: calendar) else { continue }
-            
-            let viewModel = UpcomingClassViewModel(
-                id: classTemplate.id,
-                title: classTemplate.title,
-                location: classTemplate.location,
-                nextOccurrence: nextDate
-            )
-            calculatedUpcomingClasses.append(viewModel)
+            let occurrences = getOccurrences(for: classTemplate, in: monthInterval, calendar: calendar)
+            allOccurrences.append(contentsOf: occurrences)
         }
         
-        // 3. Sort the results by the calculated next occurrence and update the published property.
-        self.upcomingClasses = calculatedUpcomingClasses.sorted { $0.nextOccurrence < $1.nextOccurrence }
+        self.scheduledDates = allOccurrences
     }
     
-    private func getNextOccurrence(for schoolClass: SchoolClass, after date: Date, calendar: Calendar) -> Date? {
-        // Get the time components from the original start date
+    private func getOccurrences(for schoolClass: SchoolClass, in interval: DateInterval, calendar: Calendar) -> [Date] {
+        var occurrences: [Date] = []
         let timeComponents = calendar.dateComponents([.hour, .minute, .second], from: schoolClass.startDate)
         
-        // Find the next date that matches the class's weekday
-        var searchDate = calendar.startOfDay(for: date)
-        while true {
-            let searchWeekday = DayOfWeek(date: searchDate).rawValue
-            if searchWeekday == schoolClass.dayOfWeek.rawValue {
-                // Use 'let' as the user correctly pointed out.
-                if let nextOccurrence = calendar.date(bySettingHour: timeComponents.hour ?? 0, minute: timeComponents.minute ?? 0, second: timeComponents.second ?? 0, of: searchDate) {
-                    // If the calculated time is in the past for today, check from tomorrow instead.
-                    if nextOccurrence < date {
-                        searchDate = calendar.date(byAdding: .day, value: 1, to: searchDate)!
-                        continue
+        var currentDate = interval.start
+        while currentDate <= interval.end {
+            let weekday = DayOfWeek(date: currentDate).rawValue
+            if weekday == schoolClass.dayOfWeek.rawValue {
+                if let occurrence = calendar.date(bySettingHour: timeComponents.hour ?? 0, minute: timeComponents.minute ?? 0, second: timeComponents.second ?? 0, of: currentDate) {
+                    if occurrence >= Date() { // Only add future dates
+                        occurrences.append(occurrence)
                     }
-                    return nextOccurrence
                 }
             }
-            searchDate = calendar.date(byAdding: .day, value: 1, to: searchDate)!
-            
-            // Safety break after a year of searching
-            if searchDate > calendar.date(byAdding: .year, value: 1, to: date)! { return nil }
+            currentDate = calendar.date(byAdding: .day, value: 1, to: currentDate)!
         }
+        return occurrences
     }
 }
