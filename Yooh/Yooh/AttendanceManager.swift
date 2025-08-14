@@ -1,3 +1,4 @@
+
 //
 //  AttendanceManager.swift
 //  Yooh
@@ -37,9 +38,60 @@ class AttendanceManager: ObservableObject {
         newRecord.schoolClass = schoolClass
 
         modelContext.insert(newRecord)
-        fetchAttendanceRecords()
+        fetchAttendanceRecords() // This will update the UI
+
+        // After saving locally, send to the backend
+        sendAttendanceRecordToAPI(record: newRecord)
+
         return true
     }
+
+    private func sendAttendanceRecordToAPI(record: AttendanceRecord) {
+        // TODO: Replace with your actual API endpoint
+        guard let url = URL(string: "http://localhost:5001/api/attendance") else {
+            print("Invalid URL")
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        // TODO: Replace with your actual JWT token retrieval mechanism
+        let token = "your_jwt_token" // THIS IS A PLACEHOLDER
+        request.addValue(token, forHTTPHeaderField: "x-auth-token")
+
+        // The backend expects an Int for classId, but the model has a String.
+        // This needs to be handled properly. For now, we attempt a conversion.
+        let classIdInt = Int(record.schoolClass?.id ?? "0") ?? 0
+
+        // Prepare the data to be sent
+        let body: [String: Any] = [
+            "studentId": 1, // TODO: Replace with the actual student ID
+            "classId": classIdInt,
+            "attendanceDate": ISO8601DateFormatter().string(from: record.timestamp),
+            "isPresent": true
+        ]
+
+        request.httpBody = try? JSONSerialization.data(withJSONObject: body, options: [])
+
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                print("API Error: \(error.localizedDescription)")
+                return
+            }
+            guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) else {
+                if let data = data, let responseBody = String(data: data, encoding: .utf8) {
+                    print("API Error: Invalid response - \(responseBody)")
+                } else {
+                    print("API Error: Invalid response")
+                }
+                return
+            }
+            print("Attendance record successfully sent to API.")
+        }.resume()
+    }
+
 
     func hasSigned(for schoolClass: SchoolClass) -> Bool {
         let today = Calendar.current.startOfDay(for: Date())
@@ -112,7 +164,7 @@ class AttendanceManager: ObservableObject {
 
     private func fetchAttendanceRecords() {
         guard let modelContext = modelContext else { return }
-        let descriptor = FetchDescriptor<AttendanceRecord>(sortBy: [SortDescriptor(\AttendanceRecord.timestamp, order: .reverse)])
+        let descriptor = FetchDescriptor<AttendanceRecord>(sortBy: [SortDescriptor(\.timestamp, order: .reverse)])
         do {
             attendanceRecords = try modelContext.fetch(descriptor)
         } catch {
