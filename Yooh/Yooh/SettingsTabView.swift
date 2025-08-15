@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct SettingsTabView: View {
+    @EnvironmentObject var authManager: AuthManager
     @ObservedObject var themeManager: ThemeManager
     @ObservedObject var schoolLocationManager: SchoolLocationManager
 
@@ -25,6 +26,15 @@ struct SettingsTabView: View {
                     Section(header: Text("Location")) {
                         NavigationLink(destination: SchoolSettingsView(schoolLocationManager: schoolLocationManager, themeManager: themeManager)) {
                             Label("School Location", systemImage: "building.2.fill")
+                        }
+                    }
+
+                    Section(header: Text("Account")) {
+                        Button(action: {
+                            authManager.logout()
+                        }) {
+                            Label("Sign Out", systemImage: "arrow.left.square.fill")
+                                .foregroundColor(.red)
                         }
                     }
                 }

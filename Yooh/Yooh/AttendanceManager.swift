@@ -14,9 +14,13 @@ import SwiftData
 class AttendanceManager: ObservableObject {
     @Published var attendanceRecords: [AttendanceRecord] = []
     private var modelContext: ModelContext? = nil
+    private var authToken: String?
+    private var studentId: Int?
 
-    func setup(modelContext: ModelContext) {
+    func setup(modelContext: ModelContext, authToken: String?, studentId: Int?) {
         self.modelContext = modelContext
+        self.authToken = authToken
+        self.studentId = studentId
         fetchAttendanceRecords()
     }
 
@@ -47,18 +51,19 @@ class AttendanceManager: ObservableObject {
     }
 
     private func sendAttendanceRecordToAPI(record: AttendanceRecord) {
-        // TODO: Replace with your actual API endpoint
-        guard let url = URL(string: "http://localhost:5001/api/attendance") else {
+        guard let url = URL(string: "http://192.168.100.49:5001/api/attendance") else {
             print("Invalid URL")
+            return
+        }
+
+        guard let token = self.authToken, let studentId = self.studentId else {
+            print("User not authenticated")
             return
         }
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-
-        // TODO: Replace with your actual JWT token retrieval mechanism
-        let token = "your_jwt_token" // THIS IS A PLACEHOLDER
         request.addValue(token, forHTTPHeaderField: "x-auth-token")
 
         // The backend expects an Int for classId, but the model has a String.
@@ -67,7 +72,7 @@ class AttendanceManager: ObservableObject {
 
         // Prepare the data to be sent
         let body: [String: Any] = [
-            "studentId": 1, // TODO: Replace with the actual student ID
+            "studentId": studentId,
             "classId": classIdInt,
             "attendanceDate": ISO8601DateFormatter().string(from: record.timestamp),
             "isPresent": true

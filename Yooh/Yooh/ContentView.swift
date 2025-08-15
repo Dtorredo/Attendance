@@ -16,6 +16,7 @@ struct ContentView: View {
     @State private var automaticAttendanceManager: AutomaticAttendanceManager?
 
     @Environment(\.modelContext) private var modelContext
+    @EnvironmentObject var authManager: AuthManager
 
     var body: some View {
         TabView {
@@ -60,7 +61,7 @@ struct ContentView: View {
             // Centralized setup for all managers
             locationManager.setSchoolLocationManager(schoolLocationManager)
             locationManager.requestLocationPermission()
-            attendanceManager.setup(modelContext: modelContext)
+            attendanceManager.setup(modelContext: modelContext, authToken: authManager.token, studentId: authManager.userId)
             calendarManager.setup(modelContext: modelContext)
             automaticAttendanceManager = AutomaticAttendanceManager(
                 attendanceManager: attendanceManager,
