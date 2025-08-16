@@ -1,9 +1,14 @@
 import SwiftUI
 import SwiftData
+import Firebase
 
 @main
 struct YoohApp: App {
     @StateObject private var authManager = AuthManager()
+
+    init() {
+        FirebaseApp.configure()
+    }
 
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([SchoolClass.self, AttendanceRecord.self])

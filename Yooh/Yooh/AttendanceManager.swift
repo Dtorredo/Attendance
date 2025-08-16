@@ -1,11 +1,3 @@
-
-//
-//  AttendanceManager.swift
-//  Yooh
-//
-//  Created by Derrick ng'ang'a on 06/08/2025.
-//
-
 import Foundation
 import Combine
 import CoreLocation
@@ -15,12 +7,10 @@ class AttendanceManager: ObservableObject {
     @Published var attendanceRecords: [AttendanceRecord] = []
     private var modelContext: ModelContext? = nil
     private var authToken: String?
-    private var studentId: Int?
 
-    func setup(modelContext: ModelContext, authToken: String?, studentId: Int?) {
+    func setup(modelContext: ModelContext, authToken: String?) {
         self.modelContext = modelContext
         self.authToken = authToken
-        self.studentId = studentId
         fetchAttendanceRecords()
     }
 
@@ -56,7 +46,7 @@ class AttendanceManager: ObservableObject {
             return
         }
 
-        guard let token = self.authToken, let studentId = self.studentId else {
+        guard let token = self.authToken else {
             print("User not authenticated")
             return
         }
@@ -64,7 +54,7 @@ class AttendanceManager: ObservableObject {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.addValue(token, forHTTPHeaderField: "x-auth-token")
+        request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
 
         // The backend expects an Int for classId, but the model has a String.
         // This needs to be handled properly. For now, we attempt a conversion.
@@ -72,7 +62,6 @@ class AttendanceManager: ObservableObject {
 
         // Prepare the data to be sent
         let body: [String: Any] = [
-            "studentId": studentId,
             "classId": classIdInt,
             "attendanceDate": ISO8601DateFormatter().string(from: record.timestamp),
             "isPresent": true

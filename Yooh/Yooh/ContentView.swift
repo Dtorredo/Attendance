@@ -2,10 +2,6 @@ import SwiftUI
 import CoreLocation
 import SwiftData
 
-import SwiftUI
-import CoreLocation
-import SwiftData
-
 struct ContentView: View {
     // Managers that are shared across tabs
     @StateObject private var locationManager = LocationManager()
@@ -61,7 +57,7 @@ struct ContentView: View {
             // Centralized setup for all managers
             locationManager.setSchoolLocationManager(schoolLocationManager)
             locationManager.requestLocationPermission()
-            attendanceManager.setup(modelContext: modelContext, authToken: authManager.token, studentId: authManager.userId)
+            attendanceManager.setup(modelContext: modelContext, authToken: authManager.token)
             calendarManager.setup(modelContext: modelContext)
             automaticAttendanceManager = AutomaticAttendanceManager(
                 attendanceManager: attendanceManager,

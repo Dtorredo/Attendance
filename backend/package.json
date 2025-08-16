@@ -18,7 +18,7 @@
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
     "pg": "^8.16.3",
-    "convex": "^1.25.4"
+    "firebase-admin": "^12.1.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"

@@ -54,7 +54,11 @@ struct LoginView: View {
 
                 // Email field
                 HStack {
-                    Image(systemName: "envelope")
+                    // Use the asset "email" instead of an SF Symbol
+                    Image("email")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 18, height: 18)
                         .foregroundColor(.secondary)
                     TextField("Email", text: $email)
                         .keyboardType(.emailAddress)
@@ -108,20 +112,42 @@ struct LoginView: View {
                         .padding(.horizontal, 6)
                 }
 
-                // Login button
-                Button(action: {
-                    // Call your AuthManager exactly as implemented (no trailing closure)
-                    authManager.login(email: email, password: password)
-                }) {
-                    Text("Sign In")
-                        .fontWeight(.semibold)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(isFormValid ? Color.accentColor : Color.gray.opacity(0.45))
-                        .foregroundColor(.white)
-                        .cornerRadius(12)
+                // Login buttons
+                VStack(spacing: 12) {
+                    Text("Sign in with:")
+                        .font(.footnote)
+                        .foregroundColor(.secondary)
+
+                    HStack(spacing: 20) {
+                        Button(action: {
+                            authManager.login(email: email, password: password)
+                        }) {
+                            // Use asset "email" as the button icon (tinted)
+                            Image("email")
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(width: 20, height: 20)
+                                .padding(12)
+                                .background(Color.white)
+                                .clipShape(Circle())
+                        }
+                        .disabled(!isFormValid)
+
+                        Button(action: {
+                            authManager.signInWithGoogle()
+                        }) {
+                            // google_logo asset shown as-is; if you want tinting, set to template and use .foregroundColor
+                            Image("google_logo")
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(width: 20, height: 20)
+                                .padding(12)
+                                .background(Color.white)
+                                .clipShape(Circle())
+                        }
+                    }
                 }
-                .disabled(!isFormValid)
+                .padding(.top, 6)
 
                 // Sign up link
                 Button(action: { isShowingSignUp.toggle() }) {

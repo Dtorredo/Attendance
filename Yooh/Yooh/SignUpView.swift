@@ -73,10 +73,13 @@ struct SignUpView: View {
                         }
                     }
 
-                    // Email
+                    // Email (using your email.png asset)
                     HStack {
-                        Image(systemName: "envelope")
-                            .foregroundColor(.secondary)
+                        Image("email")
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: 18, height: 18)
+                            .foregroundColor(.secondary) // only applies if asset is template
                         TextField("Email", text: $email)
                             .keyboardType(.emailAddress)
                             .textContentType(.emailAddress)
@@ -132,24 +135,44 @@ struct SignUpView: View {
                             .padding(.horizontal, 8)
                     }
 
-                    // Sign up button
-                    Button(action: {
-                        // Use AuthManager.signUp exactly as implemented
-                        authManager.signUp(firstName: firstName,
-                                           lastName: lastName,
-                                           email: email,
-                                           password: password,
-                                           role: role)
-                    }) {
-                        Text("Sign Up")
-                            .fontWeight(.semibold)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(isFormValid ? Color.accentColor : Color.gray.opacity(0.45))
-                            .foregroundColor(.white)
-                            .cornerRadius(12)
+                    // Sign up buttons
+                    VStack(spacing: 12) {
+                        Text("Sign up with:")
+                            .font(.footnote)
+                            .foregroundColor(.secondary)
+
+                        HStack(spacing: 20) {
+                            Button(action: {
+                                authManager.signUp(firstName: firstName,
+                                                   lastName: lastName,
+                                                   email: email,
+                                                   password: password,
+                                                   role: role)
+                            }) {
+                                Image("email")
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fit)
+                                    .frame(width: 24, height: 24)
+                                    .padding()
+                                    .background(Color.white)
+                                    .clipShape(Circle())
+                            }
+                            .disabled(!isFormValid)
+
+                            Button(action: {
+                                authManager.signInWithGoogle()
+                            }) {
+                                Image("google_logo")
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fit)
+                                    .frame(width: 24, height: 24)
+                                    .padding()
+                                    .background(Color.white)
+                                    .clipShape(Circle())
+                            }
+                        }
                     }
-                    .disabled(!isFormValid)
+                    .padding(.top, 6)
 
                     // Cancel / go back
                     Button(action: { dismiss() }) {
@@ -178,12 +201,11 @@ struct SignUpView: View {
         .onTapGesture { focusedField = nil }
         .ignoresSafeArea(.keyboard, edges: .bottom)
         .onReceive(authManager.$token) { token in
-            // Dismiss when token is set (user signed in)
             if token != nil {
                 dismiss()
             }
         }
-        .preferredColorScheme(.dark) // remove to follow system
+        .preferredColorScheme(.dark)
     }
 }
 

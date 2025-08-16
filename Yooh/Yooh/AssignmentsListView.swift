@@ -61,6 +61,7 @@ struct AssignmentsListView: View {
                 }
                 .sheet(isPresented: $showingAddSheet) {
                     AddEditAssignmentView()
+                        .environment(\.modelContext, self.modelContext)
                 }
             }
         }
