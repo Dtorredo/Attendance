@@ -1,0 +1,67 @@
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Xcode
+#
+# gitignore contributors: remember to keep this file simple and straightforward
+# See https://github.com/github/gitignore/blob/main/Global/Xcode.gitignore
+# and https://help.github.com/articles/ignoring-files/
+
+## User-specific files
+*.xcuserdatad
+xcuserdata/
+
+## Build generated
+build/
+DerivedData/
+
+## Files that should be checked into git but never modified
+*.xccheckout
+
+## Swift Package Manager
+#
+# Add this line if you want to avoid checking in source code from Swift Package Manager dependencies.
+# Packages/
+# Package.resolved
+#
+# Xcode > 13.3
+#
+# This folder contains files that are downloaded and built on demand.
+# They can be freely deleted.
+.swiftpm
+
+## Carthage
+#
+# Add this line if you use Carthage.
+# See https://github.com/Carthage/Carthage#if-youre-building-for-ios-tvos-or-watchos
+#
+# Carthage/Build
+# Carthage/Checkouts
+
+## Accio dependency manager
+#
+# Accio/
+# .accio.yml
+
+## fastlane
+#
+# It is recommended to not store sensitive data in this folder
+#
+# fastlane/report.xml
+# fastlane/Preview.html
+# fastlane/screenshots
+# fastlane/test_output
+
+## Cocoapods
+#
+# We recommend against adding the Pods directory to your .gitignore. However
+# you should judge for yourself, the pros and cons are mentioned at:
+# https://guides.cocoapods.org/using/using-cocoapods.html#should-i-check-the-pods-directory-into-source-control
+#
+# Pods/
+#
+# Add this line if you want to avoid checking in source code from the Xcode workspace
+# *.xcworkspace
