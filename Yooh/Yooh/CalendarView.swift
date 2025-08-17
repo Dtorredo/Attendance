@@ -7,6 +7,7 @@ struct CalendarView: View {
     // Make themeManager optional but DO NOT use @ObservedObject with an optional type.
     var themeManager: ThemeManager? = nil
     @Environment(\.colorScheme) var colorScheme
+    @EnvironmentObject var authManager: AuthManager
 
     @State private var selectedDate = Date()
     @State private var currentMonth = Date()
@@ -51,6 +52,7 @@ struct CalendarView: View {
         }
         .sheet(isPresented: $showingAddClass) {
             AddClassView(date: selectedDate)
+                .environmentObject(authManager)
         }
     }
 }

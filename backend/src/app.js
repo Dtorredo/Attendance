@@ -19,6 +19,7 @@ app.use('/api/auth', require('./api/routes/auth'));
 app.use('/api/dashboard', require('./api/routes/dashboard'));
 app.use('/api/attendance', require('./api/routes/attendance'));
 
+
 const PORT = process.env.PORT || 5001;
 
 app.listen(PORT, () => {

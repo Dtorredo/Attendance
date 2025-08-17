@@ -4,6 +4,7 @@ struct CalendarAndScheduleView: View {
     @ObservedObject var attendanceManager: AttendanceManager
     @ObservedObject var calendarManager: CalendarManager
     @ObservedObject var themeManager: ThemeManager
+    @EnvironmentObject var authManager: AuthManager
 
     @State private var selectedView: Int = 0
 
@@ -38,6 +39,7 @@ struct CalendarAndScheduleView: View {
                     // The content being switched
                     if selectedView == 0 {
                         CalendarView(attendanceManager: attendanceManager, calendarManager: calendarManager)
+                            .environmentObject(authManager)
                     } else {
                         ClassScheduleView()
                             .environmentObject(themeManager)

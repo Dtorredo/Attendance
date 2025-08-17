@@ -10,6 +10,7 @@ import Foundation
    
     @Model
     class AttendanceRecord {
+        var userId: String  // Add user ID for isolation
         var timestamp: Date
      var status: AttendanceStatus
         var latitude: Double
@@ -19,7 +20,8 @@ import Foundation
         @Relationship(inverse: \SchoolClass.attendanceRecord)
         var schoolClass: SchoolClass?
    
-        init(timestamp: Date, status: AttendanceStatus, latitude: Double, longitude: Double) {
+        init(userId: String, timestamp: Date, status: AttendanceStatus, latitude: Double, longitude: Double) {
+            self.userId = userId
             self.timestamp = timestamp
             self.status = status
             self.latitude = latitude

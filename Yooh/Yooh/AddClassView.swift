@@ -10,6 +10,7 @@ import SwiftUI
 struct AddClassView: View {
     @Environment(\.dismiss) var dismiss
     @Environment(\.modelContext) private var modelContext
+    @EnvironmentObject var authManager: AuthManager
     
     @State private var title = ""
     @State private var dayOfWeek = DayOfWeek.monday
@@ -60,6 +61,7 @@ struct AddClassView: View {
     private func addClass() {
         let newClass = SchoolClass(
             id: UUID().uuidString,
+            userId: authManager.currentUserId ?? "",
             title: title,
             startDate: startTime,
             endDate: endTime,

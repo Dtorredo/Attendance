@@ -7,10 +7,12 @@ class AttendanceManager: ObservableObject {
     @Published var attendanceRecords: [AttendanceRecord] = []
     private var modelContext: ModelContext? = nil
     private var authToken: String?
+    private var currentUserId: String?
 
-    func setup(modelContext: ModelContext, authToken: String?) {
+    func setup(modelContext: ModelContext, authToken: String?, currentUserId: String?) {
         self.modelContext = modelContext
         self.authToken = authToken
+        self.currentUserId = currentUserId
         fetchAttendanceRecords()
     }
 
@@ -24,6 +26,7 @@ class AttendanceManager: ObservableObject {
         let currentLocation = location ?? CLLocation(latitude: 0, longitude: 0)
 
         let newRecord = AttendanceRecord(
+            userId: currentUserId ?? "",
             timestamp: Date(),
             status: .onTime,
             latitude: currentLocation.coordinate.latitude,
@@ -158,11 +161,29 @@ class AttendanceManager: ObservableObject {
 
     private func fetchAttendanceRecords() {
         guard let modelContext = modelContext else { return }
-        let descriptor = FetchDescriptor<AttendanceRecord>(sortBy: [SortDescriptor(\.timestamp, order: .reverse)])
-        do {
-            attendanceRecords = try modelContext.fetch(descriptor)
-        } catch {
-            print("Fetch failed")
+        
+        // Filter records by current user ID
+        if let currentUserId = currentUserId {
+            let predicate = #Predicate<AttendanceRecord> { record in
+                record.userId == currentUserId
+            }
+            let descriptor = FetchDescriptor<AttendanceRecord>(
+                predicate: predicate,
+                sortBy: [SortDescriptor(\.timestamp, order: .reverse)]
+            )
+            do {
+                attendanceRecords = try modelContext.fetch(descriptor)
+            } catch {
+                print("Fetch failed")
+            }
+        } else {
+            // Fallback to all records if no user ID is set
+            let descriptor = FetchDescriptor<AttendanceRecord>(sortBy: [SortDescriptor(\.timestamp, order: .reverse)])
+            do {
+                attendanceRecords = try modelContext.fetch(descriptor)
+            } catch {
+                print("Fetch failed")
+            }
         }
     }
 }

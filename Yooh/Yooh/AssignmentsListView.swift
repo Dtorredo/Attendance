@@ -3,10 +3,13 @@ import SwiftData
 
 struct AssignmentsListView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query(sort: \Assignment.dueDate, order: .forward) private var assignments: [Assignment]
+    @EnvironmentObject var authManager: AuthManager
+    @Query private var assignments: [Assignment]
     @ObservedObject var themeManager: ThemeManager
+    @StateObject private var syncService = SyncService.shared
     
     @State private var showingAddSheet = false
+    @State private var showingError = false
 
     var body: some View {
         NavigationView {
@@ -20,7 +23,7 @@ struct AssignmentsListView: View {
                 .ignoresSafeArea()
 
                 List {
-                    ForEach(assignments) { assignment in
+                    ForEach(filteredAssignments) { assignment in
                         HStack {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(assignment.title)
@@ -53,6 +56,13 @@ struct AssignmentsListView: View {
                 .scrollContentBackground(.hidden) // Make list background transparent
                 .navigationTitle("Assignments")
                 .toolbar {
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        Button(action: syncAssignments) {
+                            Label("Sync", systemImage: "arrow.clockwise")
+                        }
+                        .disabled(syncService.isSyncing)
+                    }
+                    
                     ToolbarItem(placement: .navigationBarTrailing) {
                         Button(action: { showingAddSheet = true }) {
                             Label("Add Assignment", systemImage: "plus")
@@ -62,22 +72,74 @@ struct AssignmentsListView: View {
                 .sheet(isPresented: $showingAddSheet) {
                     AddEditAssignmentView()
                         .environment(\.modelContext, self.modelContext)
+                        .environmentObject(authManager)
                 }
+                .alert("Error", isPresented: $showingError) {
+                    Button("OK") { }
+                } message: {
+                    Text(syncService.lastSyncError ?? "Unknown error occurred")
+                }
+                .overlay(
+                    Group {
+                        if syncService.isSyncing {
+                            ProgressView("Syncing...")
+                                .padding()
+                                .background(.ultraThinMaterial)
+                                .cornerRadius(10)
+                        }
+                    }
+                )
             }
         }
+        .onAppear {
+            // Set the model context and user ID for the sync service
+            syncService.setModelContext(modelContext)
+            if let userId = getCurrentUserId() {
+                syncService.setCurrentUserId(userId)
+            }
+        }
+    }
+    
+    // Filter assignments by current user ID
+    private var filteredAssignments: [Assignment] {
+        guard let currentUserId = getCurrentUserId() else { return [] }
+        return assignments.filter { $0.userId == currentUserId }
+    }
+    
+    // Get current user ID from AuthManager
+    private func getCurrentUserId() -> String? {
+        return authManager.currentUserId
+    }
+
+    private func syncAssignments() {
+        syncService.syncAssignments()
     }
 
     private func toggleCompletion(for assignment: Assignment) {
         assignment.isCompleted.toggle()
-        // SwiftData auto-saves
+        
+        // Update in Firebase
+        syncService.updateAssignment(assignment)
+        
+        // Save the context
+        try? modelContext.save()
     }
 
     private func deleteItems(offsets: IndexSet) {
         withAnimation {
-            for index in offsets {
-                modelContext.delete(assignments[index])
+            let assignmentsToDelete = offsets.map { filteredAssignments[$0] }
+            
+            for assignment in assignmentsToDelete {
+                // Delete from Firebase first
+                syncService.deleteAssignment(assignment)
+                
+                // Then delete from SwiftData
+                modelContext.delete(assignment)
             }
         }
+        
+        // Save the context
+        try? modelContext.save()
     }
 }
 

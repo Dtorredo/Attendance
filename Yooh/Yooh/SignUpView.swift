@@ -135,44 +135,81 @@ struct SignUpView: View {
                             .padding(.horizontal, 8)
                     }
 
-                    // Sign up buttons
-                    VStack(spacing: 12) {
-                        Text("Sign up with:")
-                            .font(.footnote)
-                            .foregroundColor(.secondary)
-
-                        HStack(spacing: 20) {
-                            Button(action: {
-                                authManager.signUp(firstName: firstName,
-                                                   lastName: lastName,
-                                                   email: email,
-                                                   password: password,
-                                                   role: role)
-                            }) {
+                    // Primary Sign Up Button
+                    Button(action: {
+                        authManager.signUp(firstName: firstName,
+                                           lastName: lastName,
+                                           email: email,
+                                           password: password,
+                                           role: role)
+                    }) {
+                        HStack {
+                            if authManager.isLoading {
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                    .scaleEffect(0.8)
+                            } else {
                                 Image("email")
                                     .resizable()
                                     .aspectRatio(contentMode: .fit)
-                                    .frame(width: 24, height: 24)
-                                    .padding()
-                                    .background(Color.white)
-                                    .clipShape(Circle())
+                                    .frame(width: 20, height: 20)
                             }
-                            .disabled(!isFormValid)
-
-                            Button(action: {
-                                authManager.signInWithGoogle()
-                            }) {
-                                Image("google_logo")
-                                    .resizable()
-                                    .aspectRatio(contentMode: .fit)
-                                    .frame(width: 24, height: 24)
-                                    .padding()
-                                    .background(Color.white)
-                                    .clipShape(Circle())
-                            }
+                            Text("Sign Up with Email")
+                                .font(.system(size: 16, weight: .semibold))
                         }
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(
+                            LinearGradient(
+                                colors: isFormValid ? [Color.blue, Color.indigo] : [Color.gray],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .cornerRadius(12)
                     }
-                    .padding(.top, 6)
+                    .disabled(!isFormValid || authManager.isLoading)
+                    .padding(.top, 8)
+
+                    // Divider
+                    HStack {
+                        Rectangle()
+                            .frame(height: 1)
+                            .foregroundColor(.secondary.opacity(0.3))
+                        Text("or")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal, 16)
+                        Rectangle()
+                            .frame(height: 1)
+                            .foregroundColor(.secondary.opacity(0.3))
+                    }
+                    .padding(.vertical, 8)
+
+                    // Google Sign Up Button
+                    Button(action: {
+                        authManager.signInWithGoogle()
+                    }) {
+                        HStack {
+                            Image("google_logo")
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(width: 20, height: 20)
+                            Text("Sign Up with Google")
+                                .font(.system(size: 16, weight: .medium))
+                        }
+                        .foregroundColor(.primary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(Color(.systemBackground).opacity(0.8))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
+                        )
+                        .cornerRadius(12)
+                    }
+                    .disabled(authManager.isLoading)
 
                     // Cancel / go back
                     Button(action: { dismiss() }) {
@@ -180,7 +217,7 @@ struct SignUpView: View {
                             .font(.footnote)
                             .foregroundColor(.secondary)
                     }
-                    .padding(.top, 6)
+                    .padding(.top, 8)
                 }
                 .padding(20)
                 .frame(maxWidth: 380)

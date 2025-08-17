@@ -15,6 +15,60 @@ struct ContentView: View {
     @EnvironmentObject var authManager: AuthManager
 
     var body: some View {
+        Group {
+            if let userRole = authManager.userRole {
+                if userRole == "lecturer" {
+                    // Lecturer Dashboard
+                    LecturerDashboardView()
+                        .environment(\.modelContext, modelContext)
+                        .environmentObject(authManager)
+                } else {
+                    // Student Dashboard (existing TabView)
+                    StudentDashboardView(
+                        locationManager: locationManager,
+                        attendanceManager: attendanceManager,
+                        themeManager: themeManager,
+                        calendarManager: calendarManager,
+                        schoolLocationManager: schoolLocationManager
+                    )
+                    .environment(\.modelContext, modelContext)
+                    .environmentObject(authManager)
+                }
+            } else {
+                // Loading state while fetching user role
+                ProgressView("Loading...")
+                    .onAppear {
+                        // This will trigger the auth state listener to fetch the user role
+                    }
+            }
+        }
+        .onAppear {
+            // Centralized setup for all managers
+            locationManager.setSchoolLocationManager(schoolLocationManager)
+            locationManager.requestLocationPermission()
+            attendanceManager.setup(modelContext: modelContext, authToken: authManager.token, currentUserId: authManager.currentUserId)
+            calendarManager.setup(modelContext: modelContext)
+            automaticAttendanceManager = AutomaticAttendanceManager(
+                attendanceManager: attendanceManager,
+                locationManager: locationManager,
+                modelContext: modelContext
+            )
+            automaticAttendanceManager?.start()
+            NotificationManager.shared.requestPermission()
+        }
+    }
+}
+
+// MARK: - Student Dashboard (existing TabView functionality)
+struct StudentDashboardView: View {
+    let locationManager: LocationManager
+    let attendanceManager: AttendanceManager
+    let themeManager: ThemeManager
+    let calendarManager: CalendarManager
+    let schoolLocationManager: SchoolLocationManager
+    @EnvironmentObject var authManager: AuthManager
+    
+    var body: some View {
         TabView {
             // Tab 1: Main Dashboard
             MainDashboardView(
@@ -34,12 +88,14 @@ struct ContentView: View {
                 calendarManager: calendarManager,
                 themeManager: themeManager
             )
+            .environmentObject(authManager)
             .tabItem {
                 Label("Calendar", systemImage: "calendar")
             }
 
             // Tab 3: Assignments
             AssignmentsListView(themeManager: themeManager)
+                .environmentObject(authManager)
                 .tabItem {
                     Label("Assignments", systemImage: "book.fill")
                 }
@@ -54,19 +110,6 @@ struct ContentView: View {
             }
         }
         .onAppear {
-            // Centralized setup for all managers
-            locationManager.setSchoolLocationManager(schoolLocationManager)
-            locationManager.requestLocationPermission()
-            attendanceManager.setup(modelContext: modelContext, authToken: authManager.token)
-            calendarManager.setup(modelContext: modelContext)
-            automaticAttendanceManager = AutomaticAttendanceManager(
-                attendanceManager: attendanceManager,
-                locationManager: locationManager,
-                modelContext: modelContext
-            )
-            automaticAttendanceManager?.start()
-            NotificationManager.shared.requestPermission()
-
             // Configure Tab Bar for glass effect
             let appearance = UITabBarAppearance()
             appearance.configureWithTransparentBackground()

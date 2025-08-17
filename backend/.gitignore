@@ -2,3 +2,4 @@
 .env
 .env.local
 src/config/serviceAccountKey.json
+backend/src/config/serviceAccountKey.json

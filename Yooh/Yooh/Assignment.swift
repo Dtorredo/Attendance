@@ -4,6 +4,7 @@ import SwiftData
 @Model
 class Assignment {
     @Attribute(.unique) var id: String
+    var userId: String  // Add user ID for isolation
     var title: String
     var dueDate: Date
     var isCompleted: Bool
@@ -13,8 +14,9 @@ class Assignment {
     // Relationship to SchoolClass
     var schoolClass: SchoolClass?
 
-    init(id: String = UUID().uuidString, title: String, dueDate: Date, isCompleted: Bool = false, priority: Priority = .medium, details: String? = nil, schoolClass: SchoolClass? = nil) {
+    init(id: String = UUID().uuidString, userId: String, title: String, dueDate: Date, isCompleted: Bool = false, priority: Priority = .medium, details: String? = nil, schoolClass: SchoolClass? = nil) {
         self.id = id
+        self.userId = userId
         self.title = title
         self.dueDate = dueDate
         self.isCompleted = isCompleted

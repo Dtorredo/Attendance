@@ -4,14 +4,17 @@ import SwiftData
 struct AddEditAssignmentView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var authManager: AuthManager
     
     @Query private var classes: [SchoolClass]
+    @StateObject private var syncService = SyncService.shared
     
     @State private var title: String = ""
     @State private var dueDate: Date = Date()
     @State private var priority: Priority = .medium
     @State private var selectedClass: SchoolClass?
     @State private var details: String = ""
+    @State private var showingError = false
     
     var assignment: Assignment?
 
@@ -45,6 +48,11 @@ struct AddEditAssignmentView: View {
                 trailing: Button("Save") { saveAssignment() }
             )
             .onAppear(perform: loadAssignmentData)
+            .alert("Error", isPresented: $showingError) {
+                Button("OK") { }
+            } message: {
+                Text(syncService.lastSyncError ?? "Unknown error occurred")
+            }
         }
     }
     
@@ -53,9 +61,12 @@ struct AddEditAssignmentView: View {
             title = assignment.title
             dueDate = assignment.dueDate
             priority = assignment.priority
-            details = assignment.details ?? ""
+            details = details.isEmpty ? (assignment.details ?? "") : details
             selectedClass = assignment.schoolClass
         }
+        
+        // Set the model context for the sync service
+        syncService.setModelContext(modelContext)
     }
     
     private func saveAssignment() {
@@ -64,21 +75,40 @@ struct AddEditAssignmentView: View {
             assignment.title = title
             assignment.dueDate = dueDate
             assignment.priority = priority
-            assignment.details = details
+            assignment.details = details.isEmpty ? nil : details
             assignment.schoolClass = selectedClass
+            
+            // Update in Firebase
+            syncService.updateAssignment(assignment)
         } else {
             // Create new assignment
             let newAssignment = Assignment(
+                userId: getCurrentUserId() ?? "",
                 title: title,
                 dueDate: dueDate,
                 priority: priority,
-                details: details,
+                details: details.isEmpty ? nil : details,
                 schoolClass: selectedClass
             )
             modelContext.insert(newAssignment)
+            
+            // Save to Firebase
+            syncService.createAssignment(newAssignment)
         }
         
-        // The context is automatically saved by SwiftData
-        dismiss()
+        // Save the context
+        try? modelContext.save()
+        
+        // Show error if there was one
+        if syncService.lastSyncError != nil {
+            showingError = true
+        } else {
+            dismiss()
+        }
+    }
+    
+    // Get current user ID from AuthManager
+    private func getCurrentUserId() -> String? {
+        return authManager.currentUserId
     }
 }

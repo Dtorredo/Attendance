@@ -12,6 +12,7 @@
  @Model
 class SchoolClass {
      @Attribute(.unique) var id: String
+     var userId: String  // Add user ID for isolation
      var title: String
      var startDate: Date
      var endDate: Date
@@ -22,8 +23,9 @@ class SchoolClass {
      // Relationship to Attendance
      var attendanceRecord: AttendanceRecord?
 
-     init(id: String, title: String, startDate: Date, endDate: Date, location: String? = nil, notes: String? = nil, dayOfWeek: DayOfWeek) {
+     init(id: String, userId: String, title: String, startDate: Date, endDate: Date, location: String? = nil, notes: String? = nil, dayOfWeek: DayOfWeek) {
         self.id = id
+        self.userId = userId
         self.title = title
         self.startDate = startDate
         self.endDate = endDate
