@@ -8,8 +8,14 @@
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
 			<key>CFBundleURLSchemes</key>
+			<array/>
+		</dict>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>com.googleusercontent.apps.69414427783-4b7vnocmklc70kjh23m4a98vhq4rp55c</string>
+				<string>com.googleusercontent.apps.813246309951-5td6vk1rm8m3v8afeg5njmbfgkmc75m1</string>
 			</array>
 		</dict>
 	</array>

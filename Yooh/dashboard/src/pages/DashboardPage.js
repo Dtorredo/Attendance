@@ -1,6 +1,4 @@
-import React, { useState } from 'react';
-import { useQuery } from 'convex/react';
-import { api } from '../../convex/_generated/api';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import {
   Table,
@@ -17,6 +15,7 @@ import {
   Button,
   TableSortLabel
 } from '@mui/material';
+import { getAttendance } from '../services/attendance';
 import { useNavigate } from 'react-router-dom';
 
 const DashboardPage = () => {
@@ -25,9 +24,17 @@ const DashboardPage = () => {
   const [order, setOrder] = useState('asc');
   const [orderBy, setOrderBy] = useState('last_name');
 
-  const attendanceData = useQuery(api.dashboard.getAttendance, {
-    lecturer_id: user ? user._id : null,
-  });
+  const [attendanceData, setAttendanceData] = useState(null);
+
+  useEffect(() => {
+    const fetchAttendance = async () => {
+      if (user) {
+        const data = await getAttendance(user.uid);
+        setAttendanceData(data);
+      }
+    };
+    fetchAttendance();
+  }, [user]);
 
   const handleSortRequest = (property) => {
     const isAsc = orderBy === property && order === 'asc';
@@ -60,7 +67,7 @@ const DashboardPage = () => {
     navigate('/login');
   };
 
-  if (attendanceData === undefined) {
+  if (attendanceData === null) {
     return <Container><Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}><CircularProgress /></Box></Container>;
   }
 
@@ -108,7 +115,7 @@ const DashboardPage = () => {
           <TableBody>
             {sortedData.map((student) => (
               <TableRow
-                key={student._id}
+                key={student.id}
                 sx={{
                   backgroundColor: parseFloat(student.attendancePercentage) < 70 ? 'rgba(255, 0, 0, 0.1)' : 'inherit'
                 }}

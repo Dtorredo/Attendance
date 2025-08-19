@@ -192,7 +192,7 @@ struct AttendanceButton: View {
 
 struct StatsSection: View {
     @ObservedObject var attendanceManager: AttendanceManager
-    
+
     var body: some View {
         HStack(spacing: 15) {
             StatCard(
@@ -201,14 +201,14 @@ struct StatsSection: View {
                 icon: "calendar",
                 color: .purple
             )
-            
+
             StatCard(
                 title: "Total Days",
                 value: "\(attendanceManager.getTotalAttendanceDays())",
                 icon: "chart.bar.fill",
                 color: .orange
             )
-            
+
             StatCard(
                 title: "Streak",
                 value: "\(attendanceManager.getCurrentStreak())",

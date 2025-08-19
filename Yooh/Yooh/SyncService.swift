@@ -94,7 +94,8 @@ class SyncService: ObservableObject {
         let assignmentDTO = AssignmentDTO(from: assignment)
         let data = assignmentDTO.toDictionary()
         
-        db.collection(assignmentsCollection).addDocument(data: data) { error in
+        // Use the local assignment ID as the document ID in Firestore
+        db.collection(assignmentsCollection).document(assignment.id).setData(data) { error in
             if let error = error {
                 print("Error creating assignment in Firestore: \(error)")
                 DispatchQueue.main.async {

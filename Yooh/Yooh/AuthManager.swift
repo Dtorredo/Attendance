@@ -1,3 +1,10 @@
+//
+//  AuthManager.swift
+//  Yooh
+//
+//  Created by Derrick ng'ang'a on 07/08/2025.
+//
+
 import Foundation
 import Combine
 import FirebaseAuth
@@ -7,146 +14,78 @@ import FirebaseFirestore
 
 class AuthManager: ObservableObject {
     @Published var token: String? {
-        didSet {
-            UserDefaults.standard.set(token, forKey: "authToken")
-        }
+        didSet { UserDefaults.standard.set(token, forKey: "authToken") }
     }
     @Published var errorMessage: String?
     @Published var isLoading = false
     @Published var userRole: String? {
-        didSet {
-            if let role = userRole {
-                UserDefaults.standard.set(role, forKey: "userRole")
-            }
-        }
+        didSet { UserDefaults.standard.set(userRole, forKey: "userRole") }
     }
     @Published var currentUserId: String? {
-        didSet {
-            if let userId = currentUserId {
-                UserDefaults.standard.set(userId, forKey: "currentUserId")
-            }
-        }
+        didSet { UserDefaults.standard.set(currentUserId, forKey: "currentUserId") }
     }
 
     private var handle: AuthStateDidChangeListenerHandle?
     private let db = Firestore.firestore()
 
+    // MARK: - Init
     init() {
-        self.token = UserDefaults.standard.string(forKey: "authToken")
-        self.userRole = UserDefaults.standard.string(forKey: "userRole")
-        self.currentUserId = UserDefaults.standard.string(forKey: "currentUserId")
-        
-        handle = Auth.auth().addStateDidChangeListener { [weak self] (auth, user) in
-            if let user = user {
-                self?.currentUserId = user.uid  // Store the actual Firebase user ID
-                user.getIDToken { token, error in
-                    if let error = error {
-                        self?.errorMessage = "Failed to get ID token: \(error.localizedDescription)"
-                        self?.token = nil
-                    } else if let token = token {
-                        self?.token = token
-                        self?.errorMessage = nil
-                        // Fetch user role from Firestore
-                        self?.fetchUserRole(userId: user.uid)
-                    }
-                }
-            } else {
-                self?.token = nil
-                self?.errorMessage = nil
-                self?.userRole = nil
-                self?.currentUserId = nil
-            }
+        token       = UserDefaults.standard.string(forKey: "authToken")
+        userRole    = UserDefaults.standard.string(forKey: "userRole")
+        currentUserId = UserDefaults.standard.string(forKey: "currentUserId")
+
+        handle = Auth.auth().addStateDidChangeListener { [weak self] _, user in
+            self?.handleAuthChange(user: user)
         }
     }
 
+    // MARK: - Public entry points
     func login(email: String, password: String) {
         isLoading = true
         errorMessage = nil
-        
-        Auth.auth().signIn(withEmail: email, password: password) { [weak self] (authResult, error) in
+
+        Auth.auth().signIn(withEmail: email, password: password) { [weak self] result, error in
             DispatchQueue.main.async {
                 self?.isLoading = false
-                
                 if let error = error {
                     self?.errorMessage = "Login failed: \(error.localizedDescription)"
-                } else {
-                    self?.errorMessage = nil
-                    // Token will be set by the auth state listener
+                } else if let user = result?.user {
+                    self?.handleAuthChange(user: user)
                 }
             }
         }
     }
 
-    func signUp(firstName: String, lastName: String, email: String, password: String, role: String) {
+    func signUp(firstName: String, lastName: String,
+                email: String, password: String, role: String) {
         isLoading = true
         errorMessage = nil
-        
-        Auth.auth().createUser(withEmail: email, password: password) { [weak self] (authResult, error) in
+
+        Auth.auth().createUser(withEmail: email, password: password) { [weak self] result, error in
             DispatchQueue.main.async {
                 if let error = error {
                     self?.isLoading = false
                     self?.errorMessage = "Sign up failed: \(error.localizedDescription)"
-                } else {
-                    // Update display name
-                    let changeRequest = Auth.auth().currentUser?.createProfileChangeRequest()
-                    changeRequest?.displayName = "\(firstName) \(lastName)"
-                    changeRequest?.commitChanges { (error) in
-                        DispatchQueue.main.async {
-                            if let error = error {
-                                self?.isLoading = false
-                                self?.errorMessage = "Account created but failed to update display name: \(error.localizedDescription)"
-                            } else {
-                                // Save user data to Firestore
-                                if let user = Auth.auth().currentUser {
-                                    self?.saveUserToFirestore(userId: user.uid, firstName: firstName, lastName: lastName, email: email, role: role)
-                                }
-                            }
-                        }
-                    }
+                    return
                 }
-            }
-        }
-    }
-    
-    private func saveUserToFirestore(userId: String, firstName: String, lastName: String, email: String, role: String) {
-        let userData: [String: Any] = [
-            "firstName": firstName,
-            "lastName": lastName,
-            "email": email,
-            "role": role,
-            "createdAt": Timestamp()
-        ]
-        
-        db.collection("users").document(userId).setData(userData) { [weak self] error in
-            DispatchQueue.main.async {
-                self?.isLoading = false
-                if let error = error {
-                    self?.errorMessage = "Failed to save user data: \(error.localizedDescription)"
-                } else {
-                    self?.errorMessage = nil
-                    self?.userRole = role
-                    // Token will be set by the auth state listener
+
+                guard let user = result?.user else {
+                    self?.isLoading = false
+                    return
                 }
-            }
-        }
-    }
-    
-    private func fetchUserRole(userId: String) {
-        db.collection("users").document(userId).getDocument { [weak self] (document, error) in
-            DispatchQueue.main.async {
-                if let document = document, document.exists {
-                    if let role = document.data()?["role"] as? String {
-                        self?.userRole = role
-                    }
-                }
+
+                self?.updateProfileAndSave(user: user,
+                                           firstName: firstName,
+                                           lastName: lastName,
+                                           role: role)
             }
         }
     }
 
     func signInWithGoogle() {
-        guard let clientID = FirebaseApp.app()?.options.clientID else { 
+        guard let clientID = FirebaseApp.app()?.options.clientID else {
             errorMessage = "Firebase configuration error"
-            return 
+            return
         }
 
         isLoading = true
@@ -155,7 +94,7 @@ class AuthManager: ObservableObject {
         let config = GIDConfiguration(clientID: clientID)
         GIDSignIn.sharedInstance.configuration = config
 
-        GIDSignIn.sharedInstance.signIn(withPresenting: self.getRootViewController()) { [weak self] (result, error) in
+        GIDSignIn.sharedInstance.signIn(withPresenting: getRootViewController()) { [weak self] result, error in
             DispatchQueue.main.async {
                 if let error = error {
                     self?.isLoading = false
@@ -172,17 +111,18 @@ class AuthManager: ObservableObject {
                     return
                 }
 
-                let credential = GoogleAuthProvider.credential(withIDToken: idToken,
-                                                                 accessToken: result.user.accessToken.tokenString)
+                let credential = GoogleAuthProvider.credential(
+                    withIDToken: idToken,
+                    accessToken: result.user.accessToken.tokenString
+                )
 
-                Auth.auth().signIn(with: credential) { (authResult, error) in
+                Auth.auth().signIn(with: credential) { [weak self] authResult, error in
                     DispatchQueue.main.async {
                         self?.isLoading = false
                         if let error = error {
                             self?.errorMessage = "Firebase Sign In failed: \(error.localizedDescription)"
-                        } else {
-                            self?.errorMessage = nil
-                            // Token will be set by the auth state listener
+                        } else if let user = authResult?.user {
+                            self?.handleAuthChange(user: user)
                         }
                     }
                 }
@@ -198,27 +138,121 @@ class AuthManager: ObservableObject {
             errorMessage = nil
             userRole = nil
             currentUserId = nil
-        } catch let signOutError as NSError {
+        } catch {
             isLoading = false
-            self.errorMessage = "Error signing out: \(signOutError.localizedDescription)"
+            errorMessage = "Sign-out error: \(error.localizedDescription)"
         }
     }
 
-    deinit {
-        if let handle = handle {
-            Auth.auth().removeStateDidChangeListener(handle)
+    // MARK: - Private helpers
+    private func handleAuthChange(user: User?) {
+        if let user = user {
+            currentUserId = user.uid
+            fetchTokenAndRole(for: user)
+        } else {
+            token = nil
+            userRole = nil
+            currentUserId = nil
         }
+    }
+
+    private func fetchTokenAndRole(for user: User) {
+        Task { @MainActor in
+            do {
+                let idToken = try await withTimeout(seconds: 10) {
+                    try await user.getIDTokenResult().token
+                }
+                token = idToken
+                try await fetchUserRole(userId: user.uid)
+            } catch {
+                errorMessage = "Token/role fetch failed: \(error.localizedDescription)"
+            }
+        }
+    }
+
+    private func updateProfileAndSave(user: User,
+                                      firstName: String,
+                                      lastName: String,
+                                      role: String) {
+        Task { @MainActor in
+            do {
+                let request = user.createProfileChangeRequest()
+                request.displayName = "\(firstName) \(lastName)"
+                try await withTimeout(seconds: 10) {
+                    try await request.commitChanges()
+                }
+                try await saveUserToFirestore(
+                    userId: user.uid,
+                    firstName: firstName,
+                    lastName: lastName,
+                    email: user.email ?? "",
+                    role: role
+                )
+            } catch {
+                isLoading = false
+                errorMessage = "Profile/DB save failed: \(error.localizedDescription)"
+            }
+        }
+    }
+
+    private func saveUserToFirestore(userId: String,
+                                     firstName: String,
+                                     lastName: String,
+                                     email: String,
+                                     role: String) async throws {
+        let data: [String: Any] = [
+            "firstName": firstName,
+            "lastName": lastName,
+            "email": email,
+            "role": role,
+            "createdAt": Timestamp()
+        ]
+        try await withTimeout(seconds: 10) {
+            try await self.db.collection("users").document(userId).setData(data)
+        }
+        userRole = role
+    }
+
+    private func fetchUserRole(userId: String) async throws {
+        let snapshot = try await withTimeout(seconds: 10) {
+            try await self.db.collection("users").document(userId).getDocument()
+        }
+        userRole = snapshot.data()?["role"] as? String
     }
 
     private func getRootViewController() -> UIViewController {
-        guard let screen = UIApplication.shared.connectedScenes.first as? UIWindowScene else {
-            return .init()
+        guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let root = scene.windows.first?.rootViewController else {
+            return UIViewController()
         }
-
-        guard let root = screen.windows.first?.rootViewController else {
-            return .init()
-        }
-
         return root
+    }
+
+    deinit {
+        handle.map(Auth.auth().removeStateDidChangeListener)
+    }
+}
+
+// MARK: - Timeout helper
+private extension Task where Success == Never, Failure == Never {
+    static func sleep(seconds: TimeInterval) async throws {
+        let nanoseconds = UInt64(seconds * 1_000_000_000)
+        try await Task.sleep(nanoseconds: nanoseconds)
+    }
+}
+
+private func withTimeout<T>(seconds: TimeInterval,
+                            operation: @escaping () async throws -> T) async throws -> T {
+    try await withThrowingTaskGroup(of: T.self) { group in
+        group.addTask { try await operation() }
+        group.addTask {
+            try await Task.sleep(seconds: seconds)
+            throw URLError(.timedOut)
+        }
+        guard let result = try await group.next() else {
+            throw URLError(.badServerResponse)
+        }
+        group.cancelAll()
+        return result
     }
 }

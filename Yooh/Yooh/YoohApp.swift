@@ -4,11 +4,8 @@ import Firebase
 
 @main
 struct YoohApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
     @StateObject private var authManager = AuthManager()
-
-    init() {
-        FirebaseApp.configure()
-    }
 
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([SchoolClass.self, AttendanceRecord.self, Assignment.self])

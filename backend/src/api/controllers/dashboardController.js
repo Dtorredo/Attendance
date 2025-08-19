@@ -1,40 +1,33 @@
 
+const admin = require('../../config/firebase');
 const db = require('../../config/db');
 
 exports.getAttendance = async (req, res) => {
   try {
-    const lecturerId = req.user.id;
+    const lecturerId = req.user.uid; // Changed from req.user.id to req.user.uid
 
     // 1. Find classes for the lecturer
-    const classesResult = await db.query('SELECT * FROM classes WHERE lecturer_id = $1', [lecturerId]);
-    const classes = classesResult.rows;
-
-    if (classes.length === 0) {
-      return res.json([]); // No classes for this lecturer
+    const classesSnapshot = await db.collection('classes').where('lecturer_id', '==', lecturerId).get();
+    if (classesSnapshot.empty) {
+      return res.json([]);
     }
-
-    const classIds = classes.map(c => c.id);
+    const classIds = classesSnapshot.docs.map(doc => doc.id);
 
     // 2. Get all enrollments for these classes
-    const enrollmentsResult = await db.query(`SELECT * FROM enrollments WHERE class_id = ANY($1::int[])`, [classIds]);
-    const enrollments = enrollmentsResult.rows;
-
-    if (enrollments.length === 0) {
-        return res.json([]); // No students enrolled in any class
+    const enrollmentsSnapshot = await db.collection('enrollments').where('class_id', 'in', classIds).get();
+    if (enrollmentsSnapshot.empty) {
+      return res.json([]);
     }
-
+    const enrollments = enrollmentsSnapshot.docs.map(doc => doc.data());
     const studentIds = [...new Set(enrollments.map(e => e.student_id))];
 
     // 3. Get student details
-    const studentsResult = await db.query(`SELECT id, first_name, last_name FROM users WHERE id = ANY($1::int[])`, [studentIds]);
-    const students = studentsResult.rows;
+    const studentsSnapshot = await db.collection('users').where(admin.firestore.FieldPath.documentId(), 'in', studentIds).get();
+    const students = studentsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
     // 4. Get all attendance records for these students and classes
-    const attendanceResult = await db.query(
-      `SELECT student_id, class_id, is_present FROM attendance_records WHERE student_id = ANY($1::int[]) AND class_id = ANY($2::int[])`,
-      [studentIds, classIds]
-    );
-    const attendanceRecords = attendanceResult.rows;
+    const attendanceSnapshot = await db.collection('attendance').where('student_id', 'in', studentIds).where('class_id', 'in', classIds).get();
+    const attendanceRecords = attendanceSnapshot.docs.map(doc => doc.data());
 
     // 5. Calculate percentages
     const studentAttendance = students.map(student => {

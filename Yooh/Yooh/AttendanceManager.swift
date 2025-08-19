@@ -1,56 +1,69 @@
+//
+//  AttendanceManager.swift
+//  Yooh
+//
+//  Created by Derrick ng'ang'a on 07/08/2025.
+//
+
 import Foundation
 import Combine
 import CoreLocation
 import SwiftData
+import Network
 
 class AttendanceManager: ObservableObject {
     @Published var attendanceRecords: [AttendanceRecord] = []
-    private var modelContext: ModelContext? = nil
+
+    private var modelContext: ModelContext?
     private var authToken: String?
     private var currentUserId: String?
+    private var onFetchFinished: () -> Void = {}
 
-    func setup(modelContext: ModelContext, authToken: String?, currentUserId: String?) {
+    // MARK: - Setup
+    func setup(modelContext: ModelContext,
+               authToken: String?,
+               currentUserId: String?,
+               onFetchFinished: @escaping () -> Void = {}) {
         self.modelContext = modelContext
         self.authToken = authToken
         self.currentUserId = currentUserId
+        self.onFetchFinished = onFetchFinished
         fetchAttendanceRecords()
     }
 
-    func signAttendance(for schoolClass: SchoolClass, location: CLLocation?) -> Bool {
-        guard let modelContext = modelContext else { return false }
+    // MARK: - Public helpers
+    func signAttendance(for schoolClass: SchoolClass,
+                        location: CLLocation?) -> Bool {
+        guard let modelContext else { return false }
+        guard !hasSigned(for: schoolClass) else { return false }
 
-        guard !hasSigned(for: schoolClass) else {
-            return false
-        }
-
-        let currentLocation = location ?? CLLocation(latitude: 0, longitude: 0)
-
-        let newRecord = AttendanceRecord(
+        let loc = location ?? CLLocation(latitude: 0, longitude: 0)
+        let record = AttendanceRecord(
             userId: currentUserId ?? "",
             timestamp: Date(),
             status: .onTime,
-            latitude: currentLocation.coordinate.latitude,
-            longitude: currentLocation.coordinate.longitude
+            latitude: loc.coordinate.latitude,
+            longitude: loc.coordinate.longitude
         )
-        newRecord.schoolClass = schoolClass
+        record.schoolClass = schoolClass
+        modelContext.insert(record)
 
-        modelContext.insert(newRecord)
-        fetchAttendanceRecords() // This will update the UI
-
-        // After saving locally, send to the backend
-        sendAttendanceRecordToAPI(record: newRecord)
+        fetchAttendanceRecords()
+        sendAttendanceRecordToAPI(record: record)
 
         return true
     }
 
+    // MARK: - Private helpers
     private func sendAttendanceRecordToAPI(record: AttendanceRecord) {
-        guard let url = URL(string: "http://192.168.100.49:5001/api/attendance") else {
-            print("Invalid URL")
+        guard Self.isNetworkReachable() else {
+            print("Skipping API call – no network")
             return
         }
 
-        guard let token = self.authToken else {
-            print("User not authenticated")
+        guard let url = URL(string: "http://192.168.100.49:5001/api/attendance"),
+              let token = authToken else {
+            print("Invalid URL or missing token")
             return
         }
 
@@ -59,131 +72,119 @@ class AttendanceManager: ObservableObject {
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
         request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
 
-        // The backend expects an Int for classId, but the model has a String.
-        // This needs to be handled properly. For now, we attempt a conversion.
         let classIdInt = Int(record.schoolClass?.id ?? "0") ?? 0
-
-        // Prepare the data to be sent
         let body: [String: Any] = [
             "classId": classIdInt,
             "attendanceDate": ISO8601DateFormatter().string(from: record.timestamp),
             "isPresent": true
         ]
-
         request.httpBody = try? JSONSerialization.data(withJSONObject: body, options: [])
 
-        URLSession.shared.dataTask(with: request) { data, response, error in
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest  = 5
+        config.timeoutIntervalForResource = 5
+        let session = URLSession(configuration: config)
+
+        session.dataTask(with: request) { data, response, error in
             if let error = error {
                 print("API Error: \(error.localizedDescription)")
                 return
             }
-            guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) else {
-                if let data = data, let responseBody = String(data: data, encoding: .utf8) {
-                    print("API Error: Invalid response - \(responseBody)")
+            guard let http = response as? HTTPURLResponse,
+                  (200...299).contains(http.statusCode) else {
+                if let data = data,
+                   let body = String(data: data, encoding: .utf8) {
+                    print("API Error: \(body)")
                 } else {
-                    print("API Error: Invalid response")
+                    print("API Error: bad status code")
                 }
                 return
             }
-            print("Attendance record successfully sent to API.")
+            print("Attendance sent successfully")
         }.resume()
     }
-
 
     func hasSigned(for schoolClass: SchoolClass) -> Bool {
         let today = Calendar.current.startOfDay(for: Date())
         return attendanceRecords.contains { record in
-            record.schoolClass?.id == schoolClass.id && Calendar.current.isDate(record.timestamp, inSameDayAs: today)
+            record.schoolClass?.id == schoolClass.id &&
+            Calendar.current.isDate(record.timestamp, inSameDayAs: today)
         }
-    }
-
-    func getTotalAttendanceDays() -> Int {
-        return attendanceRecords.count
-    }
-
-    func getMonthlyAttendance() -> Int {
-        let calendar = Calendar.current
-        let currentMonth = calendar.component(.month, from: Date())
-        let currentYear = calendar.component(.year, from: Date())
-
-        return attendanceRecords.filter { record in
-            let recordMonth = calendar.component(.month, from: record.timestamp)
-            let recordYear = calendar.component(.year, from: record.timestamp)
-            return recordMonth == currentMonth && recordYear == currentYear
-        }.count
-    }
-
-    func getCurrentStreak() -> Int {
-        guard !attendanceRecords.isEmpty else { return 0 }
-
-        let calendar = Calendar.current
-        let sortedRecords = attendanceRecords.sorted { $0.timestamp > $1.timestamp }
-
-        var streak = 0
-        var currentDate = Date()
-
-        for record in sortedRecords {
-            if calendar.isDate(record.timestamp, inSameDayAs: currentDate) {
-                streak += 1
-                currentDate = calendar.date(byAdding: .day, value: -1, to: currentDate) ?? currentDate
-            } else if calendar.isDate(record.timestamp, inSameDayAs: calendar.date(byAdding: .day, value: -1, to: currentDate) ?? currentDate) {
-                streak += 1
-                currentDate = calendar.date(byAdding: .day, value: -1, to: currentDate) ?? currentDate
-            } else {
-                break
-            }
-        }
-
-        return streak
     }
 
     func getAttendanceForDate(_ date: Date) -> AttendanceRecord? {
-        return attendanceRecords.first { record in
-            Calendar.current.isDate(record.timestamp, inSameDayAs: date)
-        }
-    }
-
-    func getTodaysRecord() -> AttendanceRecord? {
-        return getAttendanceForDate(Date())
-    }
-
-    func getAttendanceForMonth(_ date: Date) -> [AttendanceRecord] {
         let calendar = Calendar.current
-        let month = calendar.component(.month, from: date)
-        let year = calendar.component(.year, from: date)
-
-        return attendanceRecords.filter { record in
-            let recordMonth = calendar.component(.month, from: record.timestamp)
-            let recordYear = calendar.component(.year, from: record.timestamp)
-            return recordMonth == month && recordYear == year
-        }.sorted { $0.timestamp > $1.timestamp }
+        return attendanceRecords.first { record in
+            calendar.isDate(record.timestamp, inSameDayAs: date)
+        }
     }
 
-    private func fetchAttendanceRecords() {
-        guard let modelContext = modelContext else { return }
+    func getMonthlyAttendance() -> String {
+        let calendar = Calendar.current
+        let now = Date()
+        guard let monthInterval = calendar.dateInterval(of: .month, for: now) else { return "0/0" }
         
-        // Filter records by current user ID
-        if let currentUserId = currentUserId {
-            let predicate = #Predicate<AttendanceRecord> { record in
-                record.userId == currentUserId
-            }
-            let descriptor = FetchDescriptor<AttendanceRecord>(
-                predicate: predicate,
-                sortBy: [SortDescriptor(\.timestamp, order: .reverse)]
-            )
-            do {
-                attendanceRecords = try modelContext.fetch(descriptor)
-            } catch {
-                print("Fetch failed")
-            }
-        } else {
-            // Fallback to all records if no user ID is set
-            let descriptor = FetchDescriptor<AttendanceRecord>(sortBy: [SortDescriptor(\.timestamp, order: .reverse)])
-            do {
-                attendanceRecords = try modelContext.fetch(descriptor)
-            } catch {
-                print("Fetch failed")
-            }
+        let monthlyRecords = attendanceRecords.filter { record in
+            monthInterval.contains(record.timestamp)
         }
+        
+        let attendedDays = Set(monthlyRecords.map { record in
+            calendar.startOfDay(for: record.timestamp)
+        }).count
+        
+        let totalDaysInMonth = calendar.range(of: .day, in: .month, for: now)!.count
+        
+        return "\(attendedDays)/\(totalDaysInMonth)"
+    }
+
+    func getTotalAttendanceDays() -> Int {
+        return Set(attendanceRecords.map { record in
+            Calendar.current.startOfDay(for: record.timestamp)
+        }).count
+    }
+
+    func getCurrentStreak() -> Int {
+        // This is a placeholder implementation.
+        // A real implementation would require more complex logic.
+        return 0
+    }
+
+    // MARK: - SwiftData fetch
+    private func fetchAttendanceRecords() {
+        guard let modelContext else { return }
+
+        let predicate: Predicate<AttendanceRecord>
+        if let currentUserId {
+            predicate = #Predicate { $0.userId == currentUserId }
+        } else {
+            predicate = #Predicate { _ in true }
+        }
+
+        let descriptor = FetchDescriptor<AttendanceRecord>(
+            predicate: predicate,
+            sortBy: [SortDescriptor(\.timestamp, order: .reverse)]
+        )
+
+        do {
+            attendanceRecords = try modelContext.fetch(descriptor)
+        } catch {
+            print("SwiftData fetch failed: \(error)")
+        }
+        DispatchQueue.main.async { self.onFetchFinished() }
+    }
+
+    // MARK: - Reachability helper
+    private static func isNetworkReachable() -> Bool {
+        let monitor = NWPathMonitor()
+        let semaphore = DispatchSemaphore(value: 0)
+        var reachable = false
+        monitor.pathUpdateHandler = { path in
+            reachable = path.status == .satisfied
+            semaphore.signal()
+        }
+        monitor.start(queue: .global())
+        semaphore.wait()
+        monitor.cancel()
+        return reachable
     }
 }

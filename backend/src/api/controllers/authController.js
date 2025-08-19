@@ -13,10 +13,12 @@ exports.register = async (req, res) => {
 
     await admin.auth().setCustomUserClaims(userRecord.uid, { role });
 
-    const result = await db.query(
-      'INSERT INTO users (first_name, last_name, email, password_hash, role, firebase_uid) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-      [firstName, lastName, email, '', role, userRecord.uid]
-    );
+    await db.collection('users').doc(userRecord.uid).set({
+      first_name: firstName,
+      last_name: lastName,
+      email,
+      role,
+    });
 
     res.status(201).json({ uid: userRecord.uid });
   } catch (error) {
@@ -29,28 +31,40 @@ exports.login = async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    // This is a placeholder. In a real app, you would verify the password.
-    // For this example, we'll just get the user by email.
+    // THIS IS A SECURITY RISK: 
+    // In a real app, you would verify the password with Firebase Auth.
+    // For this example, we'll just get the user by email and trust the client.
     const userRecord = await admin.auth().getUserByEmail(email);
 
     // Check if user exists in our DB
-    let user = await db.query('SELECT * FROM users WHERE firebase_uid = $1', [userRecord.uid]);
+    const userDoc = await db.collection('users').doc(userRecord.uid).get();
 
-    if (user.rows.length === 0) {
+    if (!userDoc.exists) {
       // User does not exist, create them
       const [firstName, lastName] = userRecord.displayName ? userRecord.displayName.split(' ') : ['',''];
-      const newUser = await db.query(
-        'INSERT INTO users (first_name, last_name, email, password_hash, role, firebase_uid) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-        [firstName || '', lastName || '', userRecord.email, '', 'student', userRecord.uid]
-      );
-      user = newUser;
+      await db.collection('users').doc(userRecord.uid).set({
+        first_name: firstName || '',
+        last_name: lastName || '',
+        email: userRecord.email,
+        role: 'student', // default role
+      });
     }
 
-    const token = await admin.auth().createCustomToken(userRecord.uid, { role: user.rows[0].role });
+    const user = userDoc.data();
+    const token = await admin.auth().createCustomToken(userRecord.uid, { role: user.role });
 
     res.json({ token });
   } catch (error) {
     console.error(error);
     res.status(500).send('Server error');
   }
+};
+
+exports.getMe = async (req, res) => {
+    try {
+        res.json(req.user);
+    } catch (error) {
+        console.error(error);
+        res.status(500).send('Server error');
+    }
 };

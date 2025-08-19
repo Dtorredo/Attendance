@@ -87,29 +87,35 @@ class LocationManager: NSObject, ObservableObject {
 extension LocationManager: CLLocationManagerDelegate {
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let location = locations.last else { return }
-        currentLocation = location
-        locationError = nil
-        checkIfWithinSchool()
+        DispatchQueue.main.async {
+            self.currentLocation = location
+            self.locationError = nil
+            self.checkIfWithinSchool()
+        }
     }
     
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        locationError = "Location manager failed with error: \(error.localizedDescription)"
+        DispatchQueue.main.async {
+            self.locationError = "Location manager failed with error: \(error.localizedDescription)"
+        }
     }
     
     func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
-        authorizationStatus = status
-        
-        switch status {
-        case .authorizedWhenInUse, .authorizedAlways:
-            startLocationUpdates()
-        case .denied, .restricted:
-            stopLocationUpdates()
-            isWithinSchool = false
-            locationError = "Location access denied"
-        case .notDetermined:
-            break
-        @unknown default:
-            break
+        DispatchQueue.main.async {
+            self.authorizationStatus = status
+            
+            switch status {
+            case .authorizedWhenInUse, .authorizedAlways:
+                self.startLocationUpdates()
+            case .denied, .restricted:
+                self.stopLocationUpdates()
+                self.isWithinSchool = false
+                self.locationError = "Location access denied"
+            case .notDetermined:
+                break
+            @unknown default:
+                break
+            }
         }
     }
 }

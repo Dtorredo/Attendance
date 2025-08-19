@@ -36,10 +36,16 @@ struct ContentView: View {
                 }
             } else {
                 // Loading state while fetching user role
-                ProgressView("Loading...")
-                    .onAppear {
-                        // This will trigger the auth state listener to fetch the user role
+                VStack {
+                    ProgressView("Loading...")
+                    Button("Log Out") {
+                        authManager.logout()
                     }
+                    .padding()
+                }
+                .onAppear {
+                    // This will trigger the auth state listener to fetch the user role
+                }
             }
         }
         .onAppear {

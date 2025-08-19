@@ -1,4 +1,3 @@
-
 //
 //  AutomaticAttendanceManager.swift
 //  Yooh
@@ -16,14 +15,15 @@ class AutomaticAttendanceManager: ObservableObject {
     private var modelContext: ModelContext
     private var timer: Timer?
 
-    init(attendanceManager: AttendanceManager, locationManager: LocationManager, modelContext: ModelContext) {
+    init(attendanceManager: AttendanceManager,
+         locationManager: LocationManager,
+         modelContext: ModelContext) {
         self.attendanceManager = attendanceManager
         self.locationManager = locationManager
         self.modelContext = modelContext
     }
 
     func start() {
-        // Run every minute
         timer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
             self?.checkAttendance()
         }
@@ -39,26 +39,32 @@ class AutomaticAttendanceManager: ObservableObject {
         let currentDay = DayOfWeek(date: now)
 
         let descriptor = FetchDescriptor<SchoolClass>(
-            predicate: #Predicate { $0.dayOfWeek == currentDay && $0.startDate <= now && $0.endDate >= now }
+            predicate: #Predicate {
+                $0.dayOfWeek == currentDay &&
+                $0.startDate <= now &&
+                $0.endDate >= now
+            }
         )
 
         do {
             let activeClasses = try modelContext.fetch(descriptor)
-            if let activeClass = activeClasses.first {
-                if locationManager.isWithinSchool {
-                    _ = attendanceManager.signAttendance(for: activeClass, location: locationManager.currentLocation)
-                }
+            if let activeClass = activeClasses.first,
+               locationManager.isWithinSchool {
+
+                _ = attendanceManager.signAttendance(
+                    for: activeClass,
+                    location: locationManager.currentLocation
+                )
             }
         } catch {
-            print("Fetch failed")
+            print("SwiftData fetch failed: \(error)")
         }
     }
 }
 
 extension DayOfWeek {
     init(date: Date) {
-        let calendar = Calendar.current
-        let weekday = calendar.component(.weekday, from: date)
+        let weekday = Calendar.current.component(.weekday, from: date)
         switch weekday {
         case 1: self = .sunday
         case 2: self = .monday

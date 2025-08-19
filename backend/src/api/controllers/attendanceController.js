@@ -13,17 +13,18 @@ exports.createAttendanceRecord = async (req, res) => {
     const decodedToken = await admin.auth().verifyIdToken(idToken);
     const uid = decodedToken.uid;
 
-    const result = await db.query(
-      'INSERT INTO attendance_records (student_id, class_id, attendance_date, is_present) VALUES ((SELECT id FROM users WHERE firebase_uid = $1), $2, $3, $4) RETURNING *',
-      [uid, classId, attendanceDate, isPresent]
-    );
+    const attendanceRecord = {
+      student_id: uid,
+      class_id: classId,
+      attendance_date: attendanceDate,
+      is_present: isPresent,
+    };
 
-    res.status(201).json(result.rows[0]);
+    const docRef = await db.collection('attendance').add(attendanceRecord);
+
+    res.status(201).json({ id: docRef.id, ...attendanceRecord });
   } catch (error) {
     console.error(error);
-    if (error.code === '23505') { // unique_violation
-        return res.status(400).json({ msg: 'Attendance record for this student, class, and date already exists.' });
-    }
     res.status(500).send('Server error');
   }
 };
