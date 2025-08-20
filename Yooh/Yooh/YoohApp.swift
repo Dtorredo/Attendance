@@ -1,6 +1,5 @@
 import SwiftUI
 import SwiftData
-import Firebase
 
 @main
 struct YoohApp: App {

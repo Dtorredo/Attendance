@@ -1,49 +1,45 @@
-
-import { db } from './firebase';
-import { collection, query, where, getDocs } from "firebase/firestore";
-
+// Mock attendance data service
 export const getAttendance = async (lecturer_id) => {
   if (!lecturer_id) {
     return [];
   }
 
-  const attendanceQuery = query(collection(db, "attendance"), where("lecturer_id", "==", lecturer_id));
-  const attendanceSnapshot = await getDocs(attendanceQuery);
-  const attendanceData = attendanceSnapshot.docs.map(doc => doc.data());
+  // Simulate API delay
+  await new Promise((resolve) => setTimeout(resolve, 500));
 
-  const studentIds = [...new Set(attendanceData.map(data => data.student_id))];
+  // Mock attendance data
+  const mockAttendanceData = [
+    {
+      _id: "student_1",
+      first_name: "John",
+      last_name: "Doe",
+      attendancePercentage: "85.50",
+    },
+    {
+      _id: "student_2",
+      first_name: "Jane",
+      last_name: "Smith",
+      attendancePercentage: "92.30",
+    },
+    {
+      _id: "student_3",
+      first_name: "Mike",
+      last_name: "Johnson",
+      attendancePercentage: "78.90",
+    },
+    {
+      _id: "student_4",
+      first_name: "Sarah",
+      last_name: "Wilson",
+      attendancePercentage: "96.70",
+    },
+    {
+      _id: "student_5",
+      first_name: "David",
+      last_name: "Brown",
+      attendancePercentage: "82.40",
+    },
+  ];
 
-  const studentsQuery = query(collection(db, "students"), where("student_id", "in", studentIds));
-  const studentsSnapshot = await getDocs(studentsQuery);
-  const studentsData = studentsSnapshot.docs.map(doc => doc.data());
-
-  const studentsById = studentsData.reduce((acc, student) => {
-    acc[student.student_id] = student;
-    return acc;
-  }, {});
-
-  const attendanceByStudent = attendanceData.reduce((acc, record) => {
-    if (!acc[record.student_id]) {
-      acc[record.student_id] = { present: 0, total: 0 };
-    }
-    acc[record.student_id].total++;
-    if (record.present) {
-      acc[record.student_id].present++;
-    }
-    return acc;
-  }, {});
-
-  const result = Object.keys(attendanceByStudent).map(student_id => {
-    const student = studentsById[student_id];
-    const attendance = attendanceByStudent[student_id];
-    const attendancePercentage = (attendance.present / attendance.total) * 100;
-    return {
-      _id: student_id,
-      first_name: student.first_name,
-      last_name: student.last_name,
-      attendancePercentage: attendancePercentage.toFixed(2),
-    };
-  });
-
-  return result;
+  return mockAttendanceData;
 };

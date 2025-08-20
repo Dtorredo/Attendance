@@ -70,19 +70,12 @@ struct LecturerDashboardView: View {
         }
     }
     
-    // Filter data by current user ID
+    // Show all data (no user filtering)
     private var filteredClasses: [SchoolClass] {
-        guard let currentUserId = getCurrentUserId() else { return [] }
-        return classes.filter { $0.userId == currentUserId }
+        return classes
     }
-    
+
     private var filteredAssignments: [Assignment] {
-        guard let currentUserId = getCurrentUserId() else { return [] }
-        return assignments.filter { $0.userId == currentUserId }
-    }
-    
-    // Get current user ID from AuthManager
-    private func getCurrentUserId() -> String? {
-        return authManager.currentUserId
+        return assignments
     }
 }

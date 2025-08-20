@@ -16,17 +16,16 @@ class AttendanceManager: ObservableObject {
 
     private var modelContext: ModelContext?
     private var authToken: String?
-    private var currentUserId: String?
     private var onFetchFinished: () -> Void = {}
 
     // MARK: - Setup
-    func setup(modelContext: ModelContext,
-               authToken: String?,
-               currentUserId: String?,
-               onFetchFinished: @escaping () -> Void = {}) {
+    func setup(
+        modelContext: ModelContext,
+        authToken: String?,
+        onFetchFinished: @escaping () -> Void = {}
+    ) {
         self.modelContext = modelContext
         self.authToken = authToken
-        self.currentUserId = currentUserId
         self.onFetchFinished = onFetchFinished
         fetchAttendanceRecords()
     }
@@ -39,7 +38,7 @@ class AttendanceManager: ObservableObject {
 
         let loc = location ?? CLLocation(latitude: 0, longitude: 0)
         let record = AttendanceRecord(
-            userId: currentUserId ?? "",
+            userId: "local_user",
             timestamp: Date(),
             status: .onTime,
             latitude: loc.coordinate.latitude,
@@ -52,56 +51,6 @@ class AttendanceManager: ObservableObject {
         sendAttendanceRecordToAPI(record: record)
 
         return true
-    }
-
-    // MARK: - Private helpers
-    private func sendAttendanceRecordToAPI(record: AttendanceRecord) {
-        guard Self.isNetworkReachable() else {
-            print("Skipping API call – no network")
-            return
-        }
-
-        guard let url = URL(string: "http://192.168.100.49:5001/api/attendance"),
-              let token = authToken else {
-            print("Invalid URL or missing token")
-            return
-        }
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-
-        let classIdInt = Int(record.schoolClass?.id ?? "0") ?? 0
-        let body: [String: Any] = [
-            "classId": classIdInt,
-            "attendanceDate": ISO8601DateFormatter().string(from: record.timestamp),
-            "isPresent": true
-        ]
-        request.httpBody = try? JSONSerialization.data(withJSONObject: body, options: [])
-
-        let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest  = 5
-        config.timeoutIntervalForResource = 5
-        let session = URLSession(configuration: config)
-
-        session.dataTask(with: request) { data, response, error in
-            if let error = error {
-                print("API Error: \(error.localizedDescription)")
-                return
-            }
-            guard let http = response as? HTTPURLResponse,
-                  (200...299).contains(http.statusCode) else {
-                if let data = data,
-                   let body = String(data: data, encoding: .utf8) {
-                    print("API Error: \(body)")
-                } else {
-                    print("API Error: bad status code")
-                }
-                return
-            }
-            print("Attendance sent successfully")
-        }.resume()
     }
 
     func hasSigned(for schoolClass: SchoolClass) -> Bool {
@@ -120,48 +69,52 @@ class AttendanceManager: ObservableObject {
     }
 
     func getMonthlyAttendance() -> String {
-        let calendar = Calendar.current
+        let cal = Calendar.current
         let now = Date()
-        guard let monthInterval = calendar.dateInterval(of: .month, for: now) else { return "0/0" }
-        
-        let monthlyRecords = attendanceRecords.filter { record in
-            monthInterval.contains(record.timestamp)
-        }
-        
-        let attendedDays = Set(monthlyRecords.map { record in
-            calendar.startOfDay(for: record.timestamp)
-        }).count
-        
-        let totalDaysInMonth = calendar.range(of: .day, in: .month, for: now)!.count
-        
-        return "\(attendedDays)/\(totalDaysInMonth)"
+        guard let month = cal.dateInterval(of: .month, for: now) else { return "0/0" }
+
+        let daysAttended = Set(
+            attendanceRecords
+                .filter { month.contains($0.timestamp) }
+                .map { cal.startOfDay(for: $0.timestamp) }
+        ).count
+
+        let daysInMonth = cal.range(of: .day, in: .month, for: now)!.count
+        return "\(daysAttended)/\(daysInMonth)"
     }
 
     func getTotalAttendanceDays() -> Int {
-        return Set(attendanceRecords.map { record in
-            Calendar.current.startOfDay(for: record.timestamp)
-        }).count
+        Set(attendanceRecords.map { Calendar.current.startOfDay(for: $0.timestamp) }).count
     }
 
     func getCurrentStreak() -> Int {
-        // This is a placeholder implementation.
-        // A real implementation would require more complex logic.
-        return 0
+        let cal = Calendar.current
+        let dates = attendanceRecords
+            .map { $0.timestamp }        // <- fix here
+            .map(cal.startOfDay(for:))
+            .sorted(by: >)
+
+        guard let latest = dates.first else { return 0 }
+
+        var streak = 1
+        var expected = cal.date(byAdding: .day, value: -1, to: latest)!
+
+        for date in dates.dropFirst() {
+            if date == expected {
+                streak += 1
+                expected = cal.date(byAdding: .day, value: -1, to: expected)!
+            } else if date < expected {
+                break
+            }
+        }
+        return streak
     }
 
     // MARK: - SwiftData fetch
     private func fetchAttendanceRecords() {
         guard let modelContext else { return }
 
-        let predicate: Predicate<AttendanceRecord>
-        if let currentUserId {
-            predicate = #Predicate { $0.userId == currentUserId }
-        } else {
-            predicate = #Predicate { _ in true }
-        }
-
         let descriptor = FetchDescriptor<AttendanceRecord>(
-            predicate: predicate,
             sortBy: [SortDescriptor(\.timestamp, order: .reverse)]
         )
 
@@ -171,6 +124,50 @@ class AttendanceManager: ObservableObject {
             print("SwiftData fetch failed: \(error)")
         }
         DispatchQueue.main.async { self.onFetchFinished() }
+    }
+
+    // MARK: - Network / stub
+    private func sendAttendanceRecordToAPI(record: AttendanceRecord) {
+#if DEBUG
+        // 1-second stub for offline testing
+        DispatchQueue.global().asyncAfter(deadline: .now() + 1) {
+            DispatchQueue.main.async { self.onFetchFinished() }
+        }
+#else
+        guard Self.isNetworkReachable() else {
+            DispatchQueue.main.async { self.onFetchFinished() }
+            return
+        }
+
+        guard let url = URL(string: "http://127.0.0.1:5001/debug-83098/us-central1/api/attendance"),
+              let token = authToken else {
+            DispatchQueue.main.async { self.onFetchFinished() }
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+
+        let classIdInt = Int(record.schoolClass?.id ?? "0") ?? 0
+        let body: [String: Any] = [
+            "classId": classIdInt,
+            "attendanceDate": ISO8601DateFormatter().string(from: record.timestamp),
+            "isPresent": true
+        ]
+        request.httpBody = try? JSONSerialization.data(withJSONObject: body, options: [])
+
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 5
+        config.timeoutIntervalForResource = 5
+        let session = URLSession(configuration: config)
+
+        session.dataTask(with: request) { _, response, error in
+            DispatchQueue.main.async { self.onFetchFinished() }
+            if let e = error { print("API error: \(e.localizedDescription)") }
+        }.resume()
+#endif
     }
 
     // MARK: - Reachability helper

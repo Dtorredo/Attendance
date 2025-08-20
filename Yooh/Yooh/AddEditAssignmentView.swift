@@ -83,7 +83,7 @@ struct AddEditAssignmentView: View {
         } else {
             // Create new assignment
             let newAssignment = Assignment(
-                userId: getCurrentUserId() ?? "",
+                userId: "local_user",
                 title: title,
                 dueDate: dueDate,
                 priority: priority,
@@ -105,10 +105,5 @@ struct AddEditAssignmentView: View {
         } else {
             dismiss()
         }
-    }
-    
-    // Get current user ID from AuthManager
-    private func getCurrentUserId() -> String? {
-        return authManager.currentUserId
     }
 }
