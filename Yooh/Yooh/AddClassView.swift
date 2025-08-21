@@ -54,8 +54,15 @@ struct AddClassView: View {
         let calendar = Calendar.current
         let weekday = calendar.component(.weekday, from: date)
         dayOfWeek = DayOfWeek(weekday: weekday) ?? .monday
-        startTime = date
-        endTime = date
+        
+        // Set start time to the selected date with a reasonable default time (9 AM)
+        var startComponents = calendar.dateComponents([.year, .month, .day], from: date)
+        startComponents.hour = 9
+        startComponents.minute = 0
+        startTime = calendar.date(from: startComponents) ?? date
+        
+        // Set end time to 1 hour after start time
+        endTime = calendar.date(byAdding: .hour, value: 1, to: startTime) ?? startTime
     }
     
     private func addClass() {

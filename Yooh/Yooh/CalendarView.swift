@@ -70,10 +70,18 @@ struct CalendarView: View {
         }
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
-                Button(action: syncClasses) {
-                    Label("Sync", systemImage: "arrow.clockwise")
+                HStack {
+                    Button(action: {
+                        syncService.cleanupDuplicateClasses()
+                    }) {
+                        Label("Cleanup", systemImage: "trash")
+                    }
+                    
+                    Button(action: syncClasses) {
+                        Label("Sync", systemImage: "arrow.clockwise")
+                    }
+                    .disabled(syncService.isSyncing)
                 }
-                .disabled(syncService.isSyncing)
             }
         }
         .sheet(isPresented: $showingClassDetails) {

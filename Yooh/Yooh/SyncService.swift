@@ -209,10 +209,57 @@ class SyncService: ObservableObject {
                             }
                         }
 
+                        // Clean up duplicate classes after syncing
+                        self?.performDuplicateCleanup()
+                        
                         try? self?.modelContext?.save()
                     }
                 }
             }
+    }
+    
+    // MARK: - Utility Methods
+    
+    func cleanupDuplicateClasses() {
+        performDuplicateCleanup()
+    }
+    
+    private func performDuplicateCleanup() {
+        guard let modelContext = modelContext else { return }
+        
+        // Get all classes for current user
+        let descriptor = FetchDescriptor<SchoolClass>()
+        guard let allClasses = try? modelContext.fetch(descriptor) else { return }
+        
+        // Group classes by title and dayOfWeek to find duplicates
+        var classGroups: [String: [SchoolClass]] = [:]
+        
+        for schoolClass in allClasses {
+            let key = "\(schoolClass.title)_\(schoolClass.dayOfWeek.rawValue)"
+            if classGroups[key] == nil {
+                classGroups[key] = []
+            }
+            classGroups[key]?.append(schoolClass)
+        }
+        
+        // Remove duplicates, keeping only the first one
+        for (key, classes) in classGroups {
+            if classes.count > 1 {
+                print("🧹 Found \(classes.count) duplicate classes for key: \(key)")
+                
+                // Sort by creation date (oldest first) and keep the first one
+                let sortedClasses = classes.sorted { 
+                    $0.startDate < $1.startDate 
+                }
+                
+                // Remove all but the first class
+                for i in 1..<sortedClasses.count {
+                    let duplicateClass = sortedClasses[i]
+                    print("🗑️ Removing duplicate class: \(duplicateClass.title) (ID: \(duplicateClass.id))")
+                    modelContext.delete(duplicateClass)
+                }
+            }
+        }
     }
 
     private func updateOrCreateClass(with dto: SchoolClassDTO) {
@@ -327,21 +374,29 @@ class SyncService: ObservableObject {
         let location = data["location"] as? String
         let notes = data["notes"] as? String
         let isRecurring = data["isRecurring"] as? Bool ?? false
+        
+        // Handle createdAt timestamp
+        let createdAt: Timestamp
+        if let timestamp = data["createdAt"] as? Timestamp {
+            createdAt = timestamp
+        } else {
+            // Fallback to startDate if createdAt is missing
+            createdAt = Timestamp(date: startDate)
+        }
 
-        // Create a temporary SchoolClass to use the existing initializer
-        let tempClass = SchoolClass(
+        // Use the new initializer that properly handles all fields
+        return SchoolClassDTO(
             id: id,
             userId: userId,
             title: title,
-            startDate: startDate,
-            endDate: endDate,
+            startDate: Timestamp(date: startDate),
+            endDate: Timestamp(date: endDate),
             location: location,
             notes: notes,
-            dayOfWeek: DayOfWeek(rawValue: dayOfWeekString) ?? .monday,
-            isRecurring: isRecurring
+            dayOfWeek: dayOfWeekString,
+            isRecurring: isRecurring,
+            createdAt: createdAt
         )
-
-        return SchoolClassDTO(from: tempClass)
     }
 
     // MARK: - Attendance Records Sync

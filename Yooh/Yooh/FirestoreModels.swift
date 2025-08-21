@@ -43,7 +43,21 @@ struct SchoolClassDTO: Codable {
         self.notes = schoolClass.notes
         self.dayOfWeek = schoolClass.dayOfWeek.rawValue
         self.isRecurring = schoolClass.isRecurring
-        self.createdAt = Timestamp()
+        self.createdAt = Timestamp(date: schoolClass.startDate) // Use startDate as fallback
+    }
+    
+    // Add a new initializer for creating from Firestore data
+    init(id: String, userId: String, title: String, startDate: Timestamp, endDate: Timestamp, location: String?, notes: String?, dayOfWeek: String, isRecurring: Bool, createdAt: Timestamp) {
+        self.id = id
+        self.userId = userId
+        self.title = title
+        self.startDate = startDate
+        self.endDate = endDate
+        self.location = location
+        self.notes = notes
+        self.dayOfWeek = dayOfWeek
+        self.isRecurring = isRecurring
+        self.createdAt = createdAt
     }
     
     func toDictionary() -> [String: Any] {
