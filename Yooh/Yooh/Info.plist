@@ -7,16 +7,18 @@
 		<dict>
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>GoogleSignin</string>
 			<key>CFBundleURLSchemes</key>
-			<array/>
+			<array>
+				<string>com.googleusercontent.apps.71962511762-k97g8k55toms4hds12ifk5tbk1dq9u9o</string>
+			</array>
 		</dict>
 		<dict>
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
 			<key>CFBundleURLSchemes</key>
-			<array>
-				<string>com.googleusercontent.apps.813246309951-5td6vk1rm8m3v8afeg5njmbfgkmc75m1</string>
-			</array>
+			<array/>
 		</dict>
 	</array>
 </dict>

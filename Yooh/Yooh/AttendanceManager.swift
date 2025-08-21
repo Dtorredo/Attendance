@@ -16,16 +16,19 @@ class AttendanceManager: ObservableObject {
 
     private var modelContext: ModelContext?
     private var authToken: String?
+    private var currentUserId: String?
     private var onFetchFinished: () -> Void = {}
 
     // MARK: - Setup
     func setup(
         modelContext: ModelContext,
         authToken: String?,
+        currentUserId: String?,
         onFetchFinished: @escaping () -> Void = {}
     ) {
         self.modelContext = modelContext
         self.authToken = authToken
+        self.currentUserId = currentUserId
         self.onFetchFinished = onFetchFinished
         fetchAttendanceRecords()
     }
@@ -38,7 +41,7 @@ class AttendanceManager: ObservableObject {
 
         let loc = location ?? CLLocation(latitude: 0, longitude: 0)
         let record = AttendanceRecord(
-            userId: "local_user",
+            userId: currentUserId ?? "",
             timestamp: Date(),
             status: .onTime,
             latitude: loc.coordinate.latitude,
@@ -114,7 +117,15 @@ class AttendanceManager: ObservableObject {
     private func fetchAttendanceRecords() {
         guard let modelContext else { return }
 
+        let predicate: Predicate<AttendanceRecord>
+        if let currentUserId {
+            predicate = #Predicate { $0.userId == currentUserId }
+        } else {
+            predicate = #Predicate { _ in true }
+        }
+
         let descriptor = FetchDescriptor<AttendanceRecord>(
+            predicate: predicate,
             sortBy: [SortDescriptor(\.timestamp, order: .reverse)]
         )
 

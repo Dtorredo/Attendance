@@ -52,7 +52,7 @@ struct ContentView: View {
             // Centralized setup for all managers
             locationManager.setSchoolLocationManager(schoolLocationManager)
             locationManager.requestLocationPermission()
-            attendanceManager.setup(modelContext: modelContext, authToken: authManager.token)
+            attendanceManager.setup(modelContext: modelContext, authToken: authManager.token, currentUserId: authManager.currentUserId)
             calendarManager.setup(modelContext: modelContext)
             automaticAttendanceManager = AutomaticAttendanceManager(
                 attendanceManager: attendanceManager,

@@ -137,11 +137,21 @@ struct SignUpView: View {
 
                     // Primary Sign Up Button
                     Button(action: {
-                        authManager.signUp(firstName: firstName,
-                                           lastName: lastName,
-                                           email: email,
-                                           password: password,
-                                           role: role)
+                        print("🔥 Sign Up button tapped!")
+                        print("📧 Email: \(email)")
+                        print("👤 Name: \(firstName) \(lastName)")
+                        print("🎭 Role: \(role)")
+                        print("✅ Form valid: \(isFormValid)")
+
+                        if isFormValid {
+                            authManager.signUp(firstName: firstName,
+                                               lastName: lastName,
+                                               email: email,
+                                               password: password,
+                                               role: role)
+                        } else {
+                            print("❌ Form is not valid!")
+                        }
                     }) {
                         HStack {
                             if authManager.isLoading {
@@ -189,6 +199,7 @@ struct SignUpView: View {
 
                     // Google Sign Up Button
                     Button(action: {
+                        print("🔥 Google Sign-Up button tapped!")
                         authManager.signInWithGoogle()
                     }) {
                         HStack {

@@ -162,6 +162,7 @@ struct LoginView: View {
 
                 // Google Sign In Button
                 Button(action: {
+                    print("🔥 Google Sign-In button tapped!")
                     authManager.signInWithGoogle()
                 }) {
                     HStack {

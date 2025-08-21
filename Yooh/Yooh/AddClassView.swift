@@ -61,7 +61,7 @@ struct AddClassView: View {
     private func addClass() {
         let newClass = SchoolClass(
             id: UUID().uuidString,
-            userId: "local_user",
+            userId: authManager.currentUserId ?? "",
             title: title,
             startDate: startTime,
             endDate: endTime,

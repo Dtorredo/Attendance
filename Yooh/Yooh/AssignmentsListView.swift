@@ -92,14 +92,23 @@ struct AssignmentsListView: View {
             }
         }
         .onAppear {
-            // Set the model context for the sync service
+            // Set the model context and user ID for the sync service
             syncService.setModelContext(modelContext)
+            if let userId = getCurrentUserId() {
+                syncService.setCurrentUserId(userId)
+            }
         }
     }
     
-    // Show all assignments (no user filtering)
+    // Filter assignments by current user ID
     private var filteredAssignments: [Assignment] {
-        return assignments
+        guard let currentUserId = getCurrentUserId() else { return [] }
+        return assignments.filter { $0.userId == currentUserId }
+    }
+    
+    // Get current user ID from AuthManager
+    private func getCurrentUserId() -> String? {
+        return authManager.currentUserId
     }
 
     private func syncAssignments() {

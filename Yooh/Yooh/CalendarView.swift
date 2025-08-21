@@ -173,7 +173,7 @@ struct CalendarGridView: View {
     private var secondaryTextColor: Color { Color.gray }
     private var accentColor: Color {
         if let tm = themeManager {
-            return tm.isDarkMode ? tm.colorTheme.mainColor : tm.colorTheme.mainColor
+            return tm.colorTheme.mainColor
         } else {
             return colorScheme == .dark ? Color.cyan : Color.blue
         }

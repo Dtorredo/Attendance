@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import Firebase
 
 @main
 struct YoohApp: App {
@@ -55,9 +56,24 @@ struct YoohApp: App {
             if authManager.token != nil {
                 ContentView()
                     .environmentObject(authManager)
+                    .onAppear {
+                        print("🏠 Showing ContentView - user is authenticated")
+                        // Set up services with model context
+                        let context = sharedModelContainer.mainContext
+                        SyncService.shared.setModelContext(context)
+                        MigrationService.shared.setModelContext(context)
+                    }
             } else {
                 LoginView()
                     .environmentObject(authManager)
+                    .onAppear {
+                        print("🔐 Showing LoginView - user not authenticated")
+                        print("📊 Auth state - token: \(authManager.token != nil ? "exists" : "nil"), userRole: \(authManager.userRole ?? "nil"), isLoading: \(authManager.isLoading)")
+                        // Set up services with model context
+                        let context = sharedModelContainer.mainContext
+                        SyncService.shared.setModelContext(context)
+                        MigrationService.shared.setModelContext(context)
+                    }
             }
         }
         .modelContainer(sharedModelContainer)
