@@ -266,8 +266,22 @@ class AuthManager: ObservableObject {
         let snapshot = try await withTimeout(seconds: 10) {
             try await self.db.collection("users").document(userId).getDocument()
         }
-        userRole = snapshot.data()?["role"] as? String
-        print("👤 User role fetched: \(userRole ?? "nil")")
+        
+        // Check if document exists and has data
+        guard snapshot.exists, let data = snapshot.data() else {
+            print("⚠️ User document doesn't exist or has no data for userId: \(userId)")
+            userRole = nil
+            return
+        }
+        
+        // Safely extract the role
+        if let role = data["role"] as? String {
+            userRole = role
+            print("👤 User role fetched: \(role)")
+        } else {
+            print("⚠️ Role field not found or invalid for userId: \(userId)")
+            userRole = nil
+        }
     }
 
     // Handle Google Sign-In users who might not have a profile yet
@@ -276,7 +290,7 @@ class AuthManager: ObservableObject {
             // Check if user profile exists
             let snapshot = try await db.collection("users").document(user.uid).getDocument()
 
-            if snapshot.exists {
+            if snapshot.exists, let data = snapshot.data(), !data.isEmpty {
                 print("✅ Existing Google user found")
                 handleAuthChange(user: user)
             } else {

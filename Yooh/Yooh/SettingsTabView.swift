@@ -16,29 +16,12 @@ struct SettingsTabView: View {
                 )
                 .ignoresSafeArea()
 
-                Form {
-                    Section(header: Text("Appearance")) {
-                        NavigationLink(destination: SettingsView(themeManager: themeManager)) {
-                            Label("Theme", systemImage: "paintbrush.fill")
-                        }
-                    }
-                    
-                    Section(header: Text("Location")) {
-                        NavigationLink(destination: SchoolSettingsView(schoolLocationManager: schoolLocationManager, themeManager: themeManager)) {
-                            Label("School Location", systemImage: "building.2.fill")
-                        }
-                    }
-
-                    Section(header: Text("Account")) {
-                        Button(action: {
-                            authManager.logout()
-                        }) {
-                            Label("Sign Out", systemImage: "arrow.left.square.fill")
-                                .foregroundColor(.red)
-                        }
-                    }
-                }
-                .scrollContentBackground(.hidden) // Make form background transparent
+                // Use the new modern SettingsView
+                SettingsView(
+                    themeManager: themeManager,
+                    schoolLocationManager: schoolLocationManager
+                )
+                .environmentObject(authManager)
             }
             .navigationTitle("Settings")
         }
