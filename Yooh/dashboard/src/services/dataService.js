@@ -4,6 +4,7 @@ import {
   getDocs,
   getDoc,
   addDoc,
+  setDoc,
   updateDoc,
   deleteDoc,
   query,
@@ -107,6 +108,38 @@ class DataService {
     }
   }
 
+  // Create assignment for a specific student (used by lecturers)
+  async createAssignmentForStudent(assignmentData, studentId) {
+    try {
+      const user = authService.getCurrentUser();
+      if (!user) throw new Error("User not authenticated");
+
+      // Generate a unique ID for the assignment
+      const assignmentId = `assignment_${Date.now()}_${Math.random()
+        .toString(36)
+        .substr(2, 9)}`;
+
+      const data = {
+        id: assignmentId, // Add the id field that iOS expects
+        userId: studentId, // Assign to specific student
+        title: assignmentData.title,
+        dueDate: new Date(assignmentData.dueDate), // Convert to Timestamp
+        isCompleted: false, // Default to not completed
+        priority: assignmentData.priority || "Medium", // Default priority (capitalized for iOS enum)
+        details: assignmentData.details || "",
+        createdBy: user.uid,
+        createdAt: new Date(),
+      };
+
+      // Use the generated ID as the document ID
+      await setDoc(doc(db, "assignments", assignmentId), data);
+      return { id: assignmentId, ...data };
+    } catch (error) {
+      console.error("Error creating assignment for student:", error);
+      throw error;
+    }
+  }
+
   async updateAssignment(assignmentId, updates) {
     try {
       const assignmentRef = doc(db, "assignments", assignmentId);
@@ -155,6 +188,40 @@ class DataService {
       return { id: docRef.id, ...data };
     } catch (error) {
       console.error("Error creating class:", error);
+      throw error;
+    }
+  }
+
+  // Create class for a specific student (used by lecturers)
+  async createClassForStudent(classData, studentId) {
+    try {
+      const user = authService.getCurrentUser();
+      if (!user) throw new Error("User not authenticated");
+
+      // Generate a unique ID for the class
+      const classId = `class_${Date.now()}_${Math.random()
+        .toString(36)
+        .substr(2, 9)}`;
+
+      const data = {
+        id: classId, // Add the id field that iOS expects
+        userId: studentId, // Assign to specific student
+        title: classData.title,
+        startDate: new Date(classData.startDate), // Convert to Timestamp
+        endDate: new Date(classData.endDate), // Convert to Timestamp
+        location: classData.location || "",
+        notes: classData.notes || "",
+        dayOfWeek: classData.dayOfWeek,
+        isRecurring: classData.isRecurring || false,
+        createdBy: user.uid,
+        createdAt: new Date(),
+      };
+
+      // Use the generated ID as the document ID
+      await setDoc(doc(db, "classes", classId), data);
+      return { id: classId, ...data };
+    } catch (error) {
+      console.error("Error creating class for student:", error);
       throw error;
     }
   }

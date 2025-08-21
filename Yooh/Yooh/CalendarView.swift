@@ -7,11 +7,21 @@ struct CalendarView: View {
     // Make themeManager optional but DO NOT use @ObservedObject with an optional type.
     var themeManager: ThemeManager? = nil
     @Environment(\.colorScheme) var colorScheme
+    @Environment(\.modelContext) private var modelContext
     @EnvironmentObject var authManager: AuthManager
+    @StateObject private var syncService = SyncService.shared
 
     @State private var selectedDate = Date()
     @State private var currentMonth = Date()
-    @State private var showingAddClass = false
+    @State private var showingClassDetails = false
+
+    private func syncClasses() {
+        if let currentUserId = authManager.currentUserId {
+            syncService.setModelContext(modelContext)
+            syncService.setCurrentUserId(currentUserId)
+            syncService.syncClasses()
+        }
+    }
 
     var body: some View {
         // No full-screen background here — parent provides the main background.
@@ -23,8 +33,9 @@ struct CalendarView: View {
                     scheduledDates: calendarManager.scheduledDates,
                     onDateSelected: { date in
                         selectedDate = date
-                        if Calendar.current.isDateInToday(date) || date > Date() {
-                            showingAddClass = true
+                        let classesForDate = calendarManager.getClassesForDate(date)
+                        if !classesForDate.isEmpty {
+                            showingClassDetails = true
                         }
                     },
                     onMonthChanged: { newMonth in
@@ -49,10 +60,27 @@ struct CalendarView: View {
         .background(Color.clear)
         .onAppear {
             calendarManager.refreshData(for: currentMonth)
+
+            // Setup and sync data when calendar appears
+            if let currentUserId = authManager.currentUserId {
+                syncService.setModelContext(modelContext)
+                syncService.setCurrentUserId(currentUserId)
+                syncService.syncClasses()
+            }
         }
-        .sheet(isPresented: $showingAddClass) {
-            AddClassView(date: selectedDate)
-                .environmentObject(authManager)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button(action: syncClasses) {
+                    Label("Sync", systemImage: "arrow.clockwise")
+                }
+                .disabled(syncService.isSyncing)
+            }
+        }
+        .sheet(isPresented: $showingClassDetails) {
+            ClassDetailsView(
+                date: selectedDate,
+                classes: calendarManager.getClassesForDate(selectedDate)
+            )
         }
     }
 }
@@ -367,5 +395,147 @@ extension View {
                     .fill(.ultraThinMaterial)
                     .shadow(color: Color.black.opacity(themeManager?.isDarkMode == true ? 0.3 : 0.12), radius: 10, x: 0, y: 5)
             )
+    }
+}
+
+// MARK: - ClassDetailsView
+struct ClassDetailsView: View {
+    let date: Date
+    let classes: [SchoolClass]
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) var colorScheme
+
+    private var dateFormatter: DateFormatter {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .full
+        return formatter
+    }
+
+    private var timeFormatter: DateFormatter {
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+        return formatter
+    }
+
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 20) {
+                // Date Header
+                VStack(spacing: 8) {
+                    Text(dateFormatter.string(from: date))
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .foregroundColor(.primary)
+
+                    Text("\(classes.count) class\(classes.count == 1 ? "" : "es") scheduled")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                .padding(.top)
+
+                // Classes List
+                ScrollView {
+                    LazyVStack(spacing: 16) {
+                        ForEach(classes, id: \.id) { schoolClass in
+                            ClassDetailCard(schoolClass: schoolClass)
+                        }
+                    }
+                    .padding(.horizontal)
+                }
+
+                Spacer()
+            }
+            .navigationTitle("Class Details")
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarItems(trailing: Button("Done") {
+                dismiss()
+            })
+        }
+    }
+}
+
+// MARK: - ClassDetailCard
+struct ClassDetailCard: View {
+    let schoolClass: SchoolClass
+    @Environment(\.colorScheme) var colorScheme
+
+    private var timeFormatter: DateFormatter {
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+        return formatter
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Class Title
+            HStack {
+                Image(systemName: "book.fill")
+                    .foregroundColor(.blue)
+                    .font(.title2)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(schoolClass.title)
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.primary)
+
+                    if schoolClass.isRecurring {
+                        Text("Recurring • \(schoolClass.dayOfWeek.rawValue.capitalized)")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 2)
+                            .background(Color.blue.opacity(0.1))
+                            .cornerRadius(4)
+                    }
+                }
+
+                Spacer()
+            }
+
+            // Time and Location
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Image(systemName: "clock")
+                        .foregroundColor(.orange)
+                        .frame(width: 20)
+
+                    Text("\(timeFormatter.string(from: schoolClass.startDate)) - \(timeFormatter.string(from: schoolClass.endDate))")
+                        .font(.subheadline)
+                        .foregroundColor(.primary)
+                }
+
+                if let location = schoolClass.location, !location.isEmpty {
+                    HStack {
+                        Image(systemName: "location")
+                            .foregroundColor(.green)
+                            .frame(width: 20)
+
+                        Text(location)
+                            .font(.subheadline)
+                            .foregroundColor(.primary)
+                    }
+                }
+
+                if let notes = schoolClass.notes, !notes.isEmpty {
+                    HStack(alignment: .top) {
+                        Image(systemName: "note.text")
+                            .foregroundColor(.purple)
+                            .frame(width: 20)
+
+                        Text(notes)
+                            .font(.subheadline)
+                            .foregroundColor(.primary)
+                            .multilineTextAlignment(.leading)
+                    }
+                }
+            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(.ultraThinMaterial)
+                .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.1), radius: 8, x: 0, y: 4)
+        )
     }
 }

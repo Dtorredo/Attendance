@@ -162,17 +162,33 @@ struct MainDashboardView: View {
     private func fetchCurrentClass() {
         let now = Date()
         let calendar = Calendar.current
-        let currentDay = DayOfWeek(date: now)
 
-        // 1. Fetch all classes for today
-        let descriptor = FetchDescriptor<SchoolClass>(
-            predicate: #Predicate { $0.dayOfWeek == currentDay }
-        )
+        // Get current day as string to avoid enum comparison issues
+        let weekday = calendar.component(.weekday, from: now)
+        let currentDayString: String
+        switch weekday {
+        case 1: currentDayString = "sunday"
+        case 2: currentDayString = "monday"
+        case 3: currentDayString = "tuesday"
+        case 4: currentDayString = "wednesday"
+        case 5: currentDayString = "thursday"
+        case 6: currentDayString = "friday"
+        case 7: currentDayString = "saturday"
+        default: currentDayString = "monday"
+        }
+
+        // 1. Fetch all classes and filter manually
+        let descriptor = FetchDescriptor<SchoolClass>()
 
         do {
-            let todaysClasses = try modelContext.fetch(descriptor)
-            
-            // 2. Find the currently active class based on time
+            let allClasses = try modelContext.fetch(descriptor)
+
+            // 2. Filter classes for today's day of week using string comparison
+            let todaysClasses = allClasses.filter { schoolClass in
+                schoolClass.dayOfWeek.rawValue == currentDayString
+            }
+
+            // 3. Find the currently active class based on time
             currentClass = todaysClasses.first { schoolClass in
                 // Get the time components from the stored class dates
                 let startTimeComponents = calendar.dateComponents([.hour, .minute], from: schoolClass.startDate)

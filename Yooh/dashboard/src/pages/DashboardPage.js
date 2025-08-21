@@ -22,12 +22,27 @@ import {
   Card,
   CardContent,
   Grid,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Fab,
+  Tabs,
+  Tab,
 } from "@mui/material";
 import {
   School as SchoolIcon,
   People as PeopleIcon,
   Assignment as AssignmentIcon,
   EventAvailable as AttendanceIcon,
+  Add as AddIcon,
+  Class as ClassIcon,
+  Schedule as ScheduleIcon,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 
@@ -43,6 +58,34 @@ const DashboardPage = () => {
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  // Dialog states
+  const [openClassDialog, setOpenClassDialog] = useState(false);
+  const [openAssignmentDialog, setOpenAssignmentDialog] = useState(false);
+  const [activeTab, setActiveTab] = useState(0);
+
+  // Class form state
+  const [classForm, setClassForm] = useState({
+    name: "",
+    description: "",
+    dayOfWeek: "",
+    startTime: "",
+    endTime: "",
+    startDate: "",
+    endDate: "",
+    location: "",
+    selectedStudents: [],
+  });
+
+  // Assignment form state
+  const [assignmentForm, setAssignmentForm] = useState({
+    title: "",
+    description: "",
+    dueDate: "",
+    dueTime: "",
+    priority: "Medium",
+    selectedStudents: [],
+  });
 
   useEffect(() => {
     console.log(
@@ -198,6 +241,99 @@ const DashboardPage = () => {
   const handleLogout = () => {
     logout();
     navigate("/login");
+  };
+
+  // Class creation functions
+  const handleCreateClass = async () => {
+    try {
+      console.log("🔄 Creating class:", classForm);
+
+      // Create class for each selected student
+      for (const studentId of classForm.selectedStudents) {
+        // Parse dates and times properly
+        const startDateTime = new Date(
+          `${classForm.startDate}T${classForm.startTime}`
+        );
+        const endDateTime = new Date(
+          `${classForm.endDate}T${classForm.endTime}`
+        );
+
+        const classData = {
+          title: classForm.name,
+          description: classForm.description,
+          dayOfWeek: classForm.dayOfWeek,
+          startDate: startDateTime.toISOString(),
+          endDate: endDateTime.toISOString(),
+          location: classForm.location,
+          notes: classForm.description,
+          userId: studentId, // This will be overridden by createClass, so we need a different approach
+          createdBy: user.uid,
+          isRecurring: true,
+        };
+
+        // We need to use a direct Firestore call since createClass sets userId to current user
+        await dataService.createClassForStudent(classData, studentId);
+      }
+
+      console.log("✅ Class created successfully");
+      setOpenClassDialog(false);
+      resetClassForm();
+      loadDashboardData(); // Refresh data
+    } catch (error) {
+      console.error("❌ Error creating class:", error);
+      setError("Failed to create class: " + error.message);
+    }
+  };
+
+  const handleCreateAssignment = async () => {
+    try {
+      console.log("🔄 Creating assignment:", assignmentForm);
+
+      // Create assignment for each selected student
+      for (const studentId of assignmentForm.selectedStudents) {
+        const assignmentData = {
+          title: assignmentForm.title,
+          details: assignmentForm.description,
+          dueDate: `${assignmentForm.dueDate}T${assignmentForm.dueTime}`,
+          priority: assignmentForm.priority, // Use selected priority
+        };
+
+        await dataService.createAssignmentForStudent(assignmentData, studentId);
+      }
+
+      console.log("✅ Assignment created successfully");
+      setOpenAssignmentDialog(false);
+      resetAssignmentForm();
+      loadDashboardData(); // Refresh data
+    } catch (error) {
+      console.error("❌ Error creating assignment:", error);
+      setError("Failed to create assignment: " + error.message);
+    }
+  };
+
+  const resetClassForm = () => {
+    setClassForm({
+      name: "",
+      description: "",
+      dayOfWeek: "",
+      startTime: "",
+      endTime: "",
+      startDate: "",
+      endDate: "",
+      location: "",
+      selectedStudents: [],
+    });
+  };
+
+  const resetAssignmentForm = () => {
+    setAssignmentForm({
+      title: "",
+      description: "",
+      dueDate: "",
+      dueTime: "",
+      priority: "Medium",
+      selectedStudents: [],
+    });
   };
 
   if (loading) {
@@ -458,6 +594,302 @@ const DashboardPage = () => {
           </TableContainer>
         </Paper>
       </Container>
+
+      {/* Floating Action Buttons */}
+      <Fab
+        color="primary"
+        aria-label="add class"
+        sx={{ position: "fixed", bottom: 80, right: 16 }}
+        onClick={() => setOpenClassDialog(true)}
+      >
+        <ClassIcon />
+      </Fab>
+
+      <Fab
+        color="secondary"
+        aria-label="add assignment"
+        sx={{ position: "fixed", bottom: 16, right: 16 }}
+        onClick={() => setOpenAssignmentDialog(true)}
+      >
+        <AssignmentIcon />
+      </Fab>
+
+      {/* Class Creation Dialog */}
+      <Dialog
+        open={openClassDialog}
+        onClose={() => setOpenClassDialog(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>Create New Class</DialogTitle>
+        <DialogContent>
+          <Box sx={{ mt: 2 }}>
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Class Name"
+                  value={classForm.name}
+                  onChange={(e) =>
+                    setClassForm({ ...classForm, name: e.target.value })
+                  }
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <FormControl fullWidth>
+                  <InputLabel>Day of Week</InputLabel>
+                  <Select
+                    value={classForm.dayOfWeek}
+                    onChange={(e) =>
+                      setClassForm({ ...classForm, dayOfWeek: e.target.value })
+                    }
+                  >
+                    <MenuItem value="monday">Monday</MenuItem>
+                    <MenuItem value="tuesday">Tuesday</MenuItem>
+                    <MenuItem value="wednesday">Wednesday</MenuItem>
+                    <MenuItem value="thursday">Thursday</MenuItem>
+                    <MenuItem value="friday">Friday</MenuItem>
+                    <MenuItem value="saturday">Saturday</MenuItem>
+                    <MenuItem value="sunday">Sunday</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Description"
+                  multiline
+                  rows={2}
+                  value={classForm.description}
+                  onChange={(e) =>
+                    setClassForm({ ...classForm, description: e.target.value })
+                  }
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Start Time"
+                  type="time"
+                  value={classForm.startTime}
+                  onChange={(e) =>
+                    setClassForm({ ...classForm, startTime: e.target.value })
+                  }
+                  InputLabelProps={{ shrink: true }}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="End Time"
+                  type="time"
+                  value={classForm.endTime}
+                  onChange={(e) =>
+                    setClassForm({ ...classForm, endTime: e.target.value })
+                  }
+                  InputLabelProps={{ shrink: true }}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Start Date"
+                  type="date"
+                  value={classForm.startDate}
+                  onChange={(e) =>
+                    setClassForm({ ...classForm, startDate: e.target.value })
+                  }
+                  InputLabelProps={{ shrink: true }}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="End Date"
+                  type="date"
+                  value={classForm.endDate}
+                  onChange={(e) =>
+                    setClassForm({ ...classForm, endDate: e.target.value })
+                  }
+                  InputLabelProps={{ shrink: true }}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Location"
+                  value={classForm.location}
+                  onChange={(e) =>
+                    setClassForm({ ...classForm, location: e.target.value })
+                  }
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <FormControl fullWidth>
+                  <InputLabel>Assign to Students</InputLabel>
+                  <Select
+                    multiple
+                    value={classForm.selectedStudents}
+                    onChange={(e) =>
+                      setClassForm({
+                        ...classForm,
+                        selectedStudents: e.target.value,
+                      })
+                    }
+                  >
+                    {students.map((student) => (
+                      <MenuItem key={student.id} value={student.id}>
+                        {student.firstName} {student.lastName} ({student.email})
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+            </Grid>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenClassDialog(false)}>Cancel</Button>
+          <Button
+            onClick={handleCreateClass}
+            variant="contained"
+            disabled={
+              !classForm.name ||
+              !classForm.dayOfWeek ||
+              classForm.selectedStudents.length === 0
+            }
+          >
+            Create Class
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Assignment Creation Dialog */}
+      <Dialog
+        open={openAssignmentDialog}
+        onClose={() => setOpenAssignmentDialog(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>Create New Assignment</DialogTitle>
+        <DialogContent>
+          <Box sx={{ mt: 2 }}>
+            <Grid container spacing={2}>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Assignment Title"
+                  value={assignmentForm.title}
+                  onChange={(e) =>
+                    setAssignmentForm({
+                      ...assignmentForm,
+                      title: e.target.value,
+                    })
+                  }
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Description"
+                  multiline
+                  rows={3}
+                  value={assignmentForm.description}
+                  onChange={(e) =>
+                    setAssignmentForm({
+                      ...assignmentForm,
+                      description: e.target.value,
+                    })
+                  }
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Due Date"
+                  type="date"
+                  value={assignmentForm.dueDate}
+                  onChange={(e) =>
+                    setAssignmentForm({
+                      ...assignmentForm,
+                      dueDate: e.target.value,
+                    })
+                  }
+                  InputLabelProps={{ shrink: true }}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Due Time"
+                  type="time"
+                  value={assignmentForm.dueTime}
+                  onChange={(e) =>
+                    setAssignmentForm({
+                      ...assignmentForm,
+                      dueTime: e.target.value,
+                    })
+                  }
+                  InputLabelProps={{ shrink: true }}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <FormControl fullWidth>
+                  <InputLabel>Priority</InputLabel>
+                  <Select
+                    value={assignmentForm.priority}
+                    onChange={(e) =>
+                      setAssignmentForm({
+                        ...assignmentForm,
+                        priority: e.target.value,
+                      })
+                    }
+                  >
+                    <MenuItem value="Low">Low</MenuItem>
+                    <MenuItem value="Medium">Medium</MenuItem>
+                    <MenuItem value="High">High</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12}>
+                <FormControl fullWidth>
+                  <InputLabel>Assign to Students</InputLabel>
+                  <Select
+                    multiple
+                    value={assignmentForm.selectedStudents}
+                    onChange={(e) =>
+                      setAssignmentForm({
+                        ...assignmentForm,
+                        selectedStudents: e.target.value,
+                      })
+                    }
+                  >
+                    {students.map((student) => (
+                      <MenuItem key={student.id} value={student.id}>
+                        {student.firstName} {student.lastName} ({student.email})
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+            </Grid>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenAssignmentDialog(false)}>Cancel</Button>
+          <Button
+            onClick={handleCreateAssignment}
+            variant="contained"
+            disabled={
+              !assignmentForm.title ||
+              !assignmentForm.dueDate ||
+              assignmentForm.selectedStudents.length === 0
+            }
+          >
+            Create Assignment
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

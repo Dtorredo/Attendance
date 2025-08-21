@@ -139,13 +139,32 @@ class SyncService: ObservableObject {
     private func decodeAssignmentFromDocument(_ document: QueryDocumentSnapshot) throws -> AssignmentDTO? {
         let data = document.data()
 
+        // Debug: Print the actual data structure
+        print("🔍 Assignment document data: \(data)")
+
         guard let id = data["id"] as? String,
               let userId = data["userId"] as? String,
               let title = data["title"] as? String,
               let dueDateTimestamp = data["dueDate"] as? Timestamp,
-              let isCompleted = data["isCompleted"] as? Bool,
               let priorityString = data["priority"] as? String,
               let priority = Priority(rawValue: priorityString) else {
+            print("❌ Missing required fields in assignment data:")
+            print("   id: \(data["id"] ?? "nil")")
+            print("   userId: \(data["userId"] ?? "nil")")
+            print("   title: \(data["title"] ?? "nil")")
+            print("   dueDate: \(data["dueDate"] ?? "nil")")
+            print("   priority: \(data["priority"] ?? "nil")")
+            throw NSError(domain: "AssignmentDecoding", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid assignment data"])
+        }
+
+        // Handle isCompleted as either Bool or Number (0/1)
+        let isCompleted: Bool
+        if let boolValue = data["isCompleted"] as? Bool {
+            isCompleted = boolValue
+        } else if let numberValue = data["isCompleted"] as? NSNumber {
+            isCompleted = numberValue.boolValue
+        } else {
+            print("❌ Invalid isCompleted format: \(data["isCompleted"] ?? "nil")")
             throw NSError(domain: "AssignmentDecoding", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid assignment data"])
         }
 
@@ -247,17 +266,50 @@ class SyncService: ObservableObject {
     private func decodeClassFromDocument(_ document: QueryDocumentSnapshot) throws -> SchoolClassDTO? {
         let data = document.data()
 
-        guard let id = data["id"] as? String,
-              let userId = data["userId"] as? String,
+        // Debug: Print the actual data structure
+        print("🔍 Class document data: \(data)")
+
+        // Use document ID if id field is missing
+        let id = data["id"] as? String ?? document.documentID
+
+        guard let userId = data["userId"] as? String,
               let title = data["title"] as? String,
-              let startDateTimestamp = data["startDate"] as? Timestamp,
-              let endDateTimestamp = data["endDate"] as? Timestamp,
               let dayOfWeekString = data["dayOfWeek"] as? String else {
+            print("❌ Missing required fields in class data:")
+            print("   id: \(id)")
+            print("   userId: \(data["userId"] ?? "nil")")
+            print("   title: \(data["title"] ?? "nil")")
+            print("   dayOfWeek: \(data["dayOfWeek"] ?? "nil")")
+            throw NSError(domain: "ClassDecoding", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid class data"])
+        }
+
+        // Handle both Timestamp and ISO string formats for dates
+        let startDateTimestamp: Timestamp
+        let endDateTimestamp: Timestamp
+
+        if let timestamp = data["startDate"] as? Timestamp {
+            startDateTimestamp = timestamp
+        } else if let dateString = data["startDate"] as? String,
+                  let date = ISO8601DateFormatter().date(from: dateString) {
+            startDateTimestamp = Timestamp(date: date)
+        } else {
+            print("❌ Invalid startDate format: \(data["startDate"] ?? "nil")")
+            throw NSError(domain: "ClassDecoding", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid class data"])
+        }
+
+        if let timestamp = data["endDate"] as? Timestamp {
+            endDateTimestamp = timestamp
+        } else if let dateString = data["endDate"] as? String,
+                  let date = ISO8601DateFormatter().date(from: dateString) {
+            endDateTimestamp = Timestamp(date: date)
+        } else {
+            print("❌ Invalid endDate format: \(data["endDate"] ?? "nil")")
             throw NSError(domain: "ClassDecoding", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid class data"])
         }
 
         let location = data["location"] as? String
         let notes = data["notes"] as? String
+        let isRecurring = data["isRecurring"] as? Bool ?? false
 
         // Create a temporary SchoolClass to use the existing initializer
         let tempClass = SchoolClass(
@@ -268,7 +320,8 @@ class SyncService: ObservableObject {
             endDate: endDateTimestamp.dateValue(),
             location: location,
             notes: notes,
-            dayOfWeek: DayOfWeek(rawValue: dayOfWeekString) ?? .monday
+            dayOfWeek: DayOfWeek(rawValue: dayOfWeekString) ?? .monday,
+            isRecurring: isRecurring
         )
 
         return SchoolClassDTO(from: tempClass)

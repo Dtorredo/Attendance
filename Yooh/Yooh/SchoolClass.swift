@@ -19,11 +19,12 @@ class SchoolClass {
      var location: String?
      var notes: String?
     var dayOfWeek: DayOfWeek
+    var isRecurring: Bool = false  // For recurring classes created by lecturers
 
      // Relationship to Attendance
      var attendanceRecord: AttendanceRecord?
 
-     init(id: String, userId: String, title: String, startDate: Date, endDate: Date, location: String? = nil, notes: String? = nil, dayOfWeek: DayOfWeek) {
+     init(id: String, userId: String, title: String, startDate: Date, endDate: Date, location: String? = nil, notes: String? = nil, dayOfWeek: DayOfWeek, isRecurring: Bool = false) {
         self.id = id
         self.userId = userId
         self.title = title
@@ -32,5 +33,6 @@ class SchoolClass {
         self.location = location
         self.notes = notes
         self.dayOfWeek = dayOfWeek
+        self.isRecurring = isRecurring
     }
  }

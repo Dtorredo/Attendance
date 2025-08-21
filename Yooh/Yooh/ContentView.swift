@@ -61,6 +61,13 @@ struct ContentView: View {
             )
             automaticAttendanceManager?.start()
             NotificationManager.shared.requestPermission()
+
+            // Setup and sync data when app appears
+            if let currentUserId = authManager.currentUserId {
+                SyncService.shared.setModelContext(modelContext)
+                SyncService.shared.setCurrentUserId(currentUserId)
+                SyncService.shared.syncAllData()
+            }
         }
     }
 }

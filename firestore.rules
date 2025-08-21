@@ -4,54 +4,54 @@ service cloud.firestore {
   match /databases/{database}/documents {
     // Helper function to check if user is a lecturer
     function isLecturer() {
-      return request.auth != null &&
+      return request.auth != null && 
              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'lecturer';
     }
-
+    
     // Helper function to check if user owns the data
     function isOwner(userId) {
       return request.auth != null && request.auth.uid == userId;
     }
-
+    
     // Users: Own data + lecturers can read all user profiles
     match /users/{userId} {
       allow read: if isOwner(userId) || isLecturer();
       allow write: if isOwner(userId);
     }
-
+    
     // Classes: Own data + lecturers can read all classes
     match /classes/{classId} {
       allow read: if isOwner(resource.data.userId) || isLecturer();
-      allow write: if isOwner(resource.data.userId);
-      allow create: if isOwner(request.resource.data.userId);
+      allow write: if isOwner(resource.data.userId) || isLecturer();
+      allow create: if isOwner(request.resource.data.userId) || isLecturer();
     }
-
+    
     // Assignments: Own data + lecturers can read all assignments
     match /assignments/{assignmentId} {
       allow read: if isOwner(resource.data.userId) || isLecturer();
-      allow write: if isOwner(resource.data.userId);
-      allow create: if isOwner(request.resource.data.userId);
+      allow write: if isOwner(resource.data.userId) || isLecturer();
+      allow create: if isOwner(request.resource.data.userId) || isLecturer();
     }
-
+    
     // Attendance Records: Own data + lecturers can read all attendance
     match /attendance/{recordId} {
       allow read: if isOwner(resource.data.userId) || isLecturer();
-      allow write: if isOwner(resource.data.userId);
-      allow create: if isOwner(request.resource.data.userId);
+      allow write: if isOwner(resource.data.userId) || isLecturer();
+      allow create: if isOwner(request.resource.data.userId) || isLecturer();
     }
-
+    
     // School Locations: Own data + lecturers can read all locations
     match /locations/{locationId} {
       allow read: if isOwner(resource.data.userId) || isLecturer();
-      allow write: if isOwner(resource.data.userId);
-      allow create: if isOwner(request.resource.data.userId);
+      allow write: if isOwner(resource.data.userId) || isLecturer();
+      allow create: if isOwner(request.resource.data.userId) || isLecturer();
     }
-
+    
     // Migrations: Users can only access their own migration status
     match /migrations/{userId} {
       allow read, write: if isOwner(userId);
     }
-
+    
     // Deny all other access
     match /{document=**} {
       allow read, write: if false;

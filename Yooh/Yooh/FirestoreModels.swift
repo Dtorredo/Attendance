@@ -30,6 +30,7 @@ struct SchoolClassDTO: Codable {
     let location: String?
     let notes: String?
     let dayOfWeek: String
+    let isRecurring: Bool
     let createdAt: Timestamp
     
     init(from schoolClass: SchoolClass) {
@@ -41,6 +42,7 @@ struct SchoolClassDTO: Codable {
         self.location = schoolClass.location
         self.notes = schoolClass.notes
         self.dayOfWeek = schoolClass.dayOfWeek.rawValue
+        self.isRecurring = schoolClass.isRecurring
         self.createdAt = Timestamp()
     }
     
@@ -52,6 +54,7 @@ struct SchoolClassDTO: Codable {
             "startDate": startDate,
             "endDate": endDate,
             "dayOfWeek": dayOfWeek,
+            "isRecurring": isRecurring,
             "createdAt": createdAt
         ]
         
@@ -196,7 +199,8 @@ extension SchoolClass {
             endDate: dto.endDate.dateValue(),
             location: dto.location,
             notes: dto.notes,
-            dayOfWeek: DayOfWeek(rawValue: dto.dayOfWeek) ?? .monday
+            dayOfWeek: DayOfWeek(rawValue: dto.dayOfWeek) ?? .monday,
+            isRecurring: dto.isRecurring
         )
     }
 }

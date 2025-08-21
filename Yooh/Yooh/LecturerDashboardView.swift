@@ -45,15 +45,11 @@ struct LecturerDashboardView: View {
                         .cornerRadius(12)
                     }
                     
-                    Button("Add New Class") {
-                        // TODO: Implement add class
-                    }
-                    .buttonStyle(.borderedProminent)
-                    
-                    Button("Add New Assignment") {
-                        // TODO: Implement add assignment
-                    }
-                    .buttonStyle(.borderedProminent)
+                    Text("Use the web dashboard to create classes and assignments")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding()
                     
                     Button("Sign Out") {
                         authManager.logout()

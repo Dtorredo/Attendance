@@ -8,7 +8,6 @@ struct AssignmentsListView: View {
     @ObservedObject var themeManager: ThemeManager
     @StateObject private var syncService = SyncService.shared
     
-    @State private var showingAddSheet = false
     @State private var showingError = false
 
     var body: some View {
@@ -62,17 +61,6 @@ struct AssignmentsListView: View {
                         }
                         .disabled(syncService.isSyncing)
                     }
-                    
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        Button(action: { showingAddSheet = true }) {
-                            Label("Add Assignment", systemImage: "plus")
-                        }
-                    }
-                }
-                .sheet(isPresented: $showingAddSheet) {
-                    AddEditAssignmentView()
-                        .environment(\.modelContext, self.modelContext)
-                        .environmentObject(authManager)
                 }
                 .alert("Error", isPresented: $showingError) {
                     Button("OK") { }
@@ -96,6 +84,7 @@ struct AssignmentsListView: View {
             syncService.setModelContext(modelContext)
             if let userId = getCurrentUserId() {
                 syncService.setCurrentUserId(userId)
+                syncService.syncAssignments()
             }
         }
     }

@@ -36,18 +36,35 @@ class AutomaticAttendanceManager: ObservableObject {
 
     private func checkAttendance() {
         let now = Date()
-        let currentDay = DayOfWeek(date: now)
 
+        // Get current day as string to avoid enum comparison issues
+        let calendar = Calendar.current
+        let weekday = calendar.component(.weekday, from: now)
+        let currentDayString: String
+        switch weekday {
+        case 1: currentDayString = "sunday"
+        case 2: currentDayString = "monday"
+        case 3: currentDayString = "tuesday"
+        case 4: currentDayString = "wednesday"
+        case 5: currentDayString = "thursday"
+        case 6: currentDayString = "friday"
+        case 7: currentDayString = "saturday"
+        default: currentDayString = "monday"
+        }
+
+        // Fetch all classes and filter manually
         let descriptor = FetchDescriptor<SchoolClass>(
-            predicate: #Predicate {
-                $0.dayOfWeek == currentDay &&
-                $0.startDate <= now &&
-                $0.endDate >= now
+            predicate: #Predicate { schoolClass in
+                schoolClass.startDate <= now &&
+                schoolClass.endDate >= now
             }
         )
 
         do {
-            let activeClasses = try modelContext.fetch(descriptor)
+            let timeFilteredClasses = try modelContext.fetch(descriptor)
+            // Filter by day of week manually using string comparison
+            let activeClasses = timeFilteredClasses.filter { $0.dayOfWeek.rawValue == currentDayString }
+
             if let activeClass = activeClasses.first,
                locationManager.isWithinSchool {
 
