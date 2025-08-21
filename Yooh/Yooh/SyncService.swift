@@ -200,17 +200,8 @@ class SyncService: ObservableObject {
                     } else {
                         for document in querySnapshot!.documents {
                             do {
-                                let classDTO = try self?.decodeClassFromDocument(document)
-                                if let classDTO = classDTO {
-                                    let classId = classDTO.id
-                                    let predicate = #Predicate<SchoolClass> { schoolClass in
-                                        schoolClass.id == classId
-                                    }
-                                    let descriptor = FetchDescriptor(predicate: predicate)
-                                    if let existingClasses = try? self?.modelContext?.fetch(descriptor), existingClasses.isEmpty {
-                                        let newClass = SchoolClass(from: classDTO)
-                                        self?.modelContext?.insert(newClass)
-                                    }
+                                if let classDTO = try self?.decodeClassFromDocument(document) {
+                                    self?.updateOrCreateClass(with: classDTO)
                                 }
                             } catch {
                                 print("Error decoding class: \(error)")
@@ -222,6 +213,32 @@ class SyncService: ObservableObject {
                     }
                 }
             }
+    }
+
+    private func updateOrCreateClass(with dto: SchoolClassDTO) {
+        guard let modelContext = modelContext else { return }
+        let classId = dto.id
+        let predicate = #Predicate<SchoolClass> { $0.id == classId }
+        let descriptor = FetchDescriptor(predicate: predicate)
+
+        do {
+            if let existingClass = try modelContext.fetch(descriptor).first {
+                // Update existing class
+                existingClass.title = dto.title
+                existingClass.startDate = dto.startDate.dateValue()
+                existingClass.endDate = dto.endDate.dateValue()
+                existingClass.location = dto.location
+                existingClass.notes = dto.notes
+                existingClass.dayOfWeek = DayOfWeek(rawValue: dto.dayOfWeek) ?? .monday
+                existingClass.isRecurring = dto.isRecurring
+            } else {
+                // Create new class
+                let newClass = SchoolClass(from: dto)
+                modelContext.insert(newClass)
+            }
+        } catch {
+            print("Error fetching or updating class: \(error)")
+        }
     }
 
     func createClass(_ schoolClass: SchoolClass) {
@@ -284,24 +301,24 @@ class SyncService: ObservableObject {
         }
 
         // Handle both Timestamp and ISO string formats for dates
-        let startDateTimestamp: Timestamp
-        let endDateTimestamp: Timestamp
+        let startDate: Date
+        let endDate: Date
 
         if let timestamp = data["startDate"] as? Timestamp {
-            startDateTimestamp = timestamp
+            startDate = timestamp.dateValue()
         } else if let dateString = data["startDate"] as? String,
                   let date = ISO8601DateFormatter().date(from: dateString) {
-            startDateTimestamp = Timestamp(date: date)
+            startDate = date
         } else {
             print("❌ Invalid startDate format: \(data["startDate"] ?? "nil")")
             throw NSError(domain: "ClassDecoding", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid class data"])
         }
 
         if let timestamp = data["endDate"] as? Timestamp {
-            endDateTimestamp = timestamp
+            endDate = timestamp.dateValue()
         } else if let dateString = data["endDate"] as? String,
                   let date = ISO8601DateFormatter().date(from: dateString) {
-            endDateTimestamp = Timestamp(date: date)
+            endDate = date
         } else {
             print("❌ Invalid endDate format: \(data["endDate"] ?? "nil")")
             throw NSError(domain: "ClassDecoding", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid class data"])
@@ -316,8 +333,8 @@ class SyncService: ObservableObject {
             id: id,
             userId: userId,
             title: title,
-            startDate: startDateTimestamp.dateValue(),
-            endDate: endDateTimestamp.dateValue(),
+            startDate: startDate,
+            endDate: endDate,
             location: location,
             notes: notes,
             dayOfWeek: DayOfWeek(rawValue: dayOfWeekString) ?? .monday,

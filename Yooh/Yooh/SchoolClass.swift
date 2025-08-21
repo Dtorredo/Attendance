@@ -36,3 +36,5 @@ class SchoolClass {
         self.isRecurring = isRecurring
     }
  }
+
+

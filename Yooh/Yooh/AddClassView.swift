@@ -66,7 +66,8 @@ struct AddClassView: View {
             startDate: startTime,
             endDate: endTime,
             location: location,
-            dayOfWeek: dayOfWeek
+            dayOfWeek: dayOfWeek,
+            isRecurring: true 
         )
         modelContext.insert(newClass)
         NotificationManager.shared.scheduleNotification(for: newClass)
