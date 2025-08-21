@@ -2,46 +2,54 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Users can only access their own user document
+    // Helper function to check if user is a lecturer
+    function isLecturer() {
+      return request.auth != null &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'lecturer';
+    }
+
+    // Helper function to check if user owns the data
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    // Users: Own data + lecturers can read all user profiles
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if isOwner(userId) || isLecturer();
+      allow write: if isOwner(userId);
     }
-    
-    // Classes: Users can only access their own classes
+
+    // Classes: Own data + lecturers can read all classes
     match /classes/{classId} {
-      allow read, write: if request.auth != null && 
-        request.auth.uid == resource.data.userId;
-      allow create: if request.auth != null && 
-        request.auth.uid == request.resource.data.userId;
+      allow read: if isOwner(resource.data.userId) || isLecturer();
+      allow write: if isOwner(resource.data.userId);
+      allow create: if isOwner(request.resource.data.userId);
     }
-    
-    // Assignments: Users can only access their own assignments
+
+    // Assignments: Own data + lecturers can read all assignments
     match /assignments/{assignmentId} {
-      allow read, write: if request.auth != null && 
-        request.auth.uid == resource.data.userId;
-      allow create: if request.auth != null && 
-        request.auth.uid == request.resource.data.userId;
+      allow read: if isOwner(resource.data.userId) || isLecturer();
+      allow write: if isOwner(resource.data.userId);
+      allow create: if isOwner(request.resource.data.userId);
     }
-    
-    // Attendance Records: Users can only access their own attendance records
+
+    // Attendance Records: Own data + lecturers can read all attendance
     match /attendance/{recordId} {
-      allow read, write: if request.auth != null && 
-        request.auth.uid == resource.data.userId;
-      allow create: if request.auth != null && 
-        request.auth.uid == request.resource.data.userId;
+      allow read: if isOwner(resource.data.userId) || isLecturer();
+      allow write: if isOwner(resource.data.userId);
+      allow create: if isOwner(request.resource.data.userId);
     }
-    
-    // School Locations: Users can only access their own locations
+
+    // School Locations: Own data + lecturers can read all locations
     match /locations/{locationId} {
-      allow read, write: if request.auth != null &&
-        request.auth.uid == resource.data.userId;
-      allow create: if request.auth != null &&
-        request.auth.uid == request.resource.data.userId;
+      allow read: if isOwner(resource.data.userId) || isLecturer();
+      allow write: if isOwner(resource.data.userId);
+      allow create: if isOwner(request.resource.data.userId);
     }
 
     // Migrations: Users can only access their own migration status
     match /migrations/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if isOwner(userId);
     }
 
     // Deny all other access

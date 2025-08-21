@@ -1,4 +1,5 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect } from "react";
+import authService from "../services/authService";
 
 const AuthContext = createContext();
 
@@ -6,33 +7,28 @@ export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [userRole, setUserRole] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const login = async (email, password) => {
     setLoading(true);
+    setError(null);
     try {
-      const response = await fetch('http://localhost:5001/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      });
-      const data = await response.json();
-      if (response.ok) {
-        localStorage.setItem('token', data.token);
-        const userResponse = await fetch('http://localhost:5001/api/auth/me', { // Assuming you have a /me endpoint
-            headers: { 'Authorization': `Bearer ${data.token}` }
-        });
-        const userData = await userResponse.json();
-        if (userResponse.ok) {
-            setUser(userData);
-        }
+      console.log("🔥 Attempting login with Firebase...");
+      const result = await authService.signIn(email, password);
+      if (result.success) {
+        console.log("✅ Login successful");
+        setUser(result.user);
+        setUserRole(authService.getUserRole());
       } else {
-        throw new Error(data.msg || 'Failed to login');
+        console.error("❌ Login failed:", result.error);
+        setError(result.error);
+        throw new Error(result.error);
       }
     } catch (error) {
-      console.error(error);
+      console.error("❌ Login error:", error);
+      setError(error.message);
     } finally {
       setLoading(false);
     }
@@ -40,54 +36,77 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (firstName, lastName, email, password, role) => {
     setLoading(true);
+    setError(null);
     try {
-      const response = await fetch('http://localhost:5001/api/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ firstName, lastName, email, password, role }),
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.msg || 'Failed to register');
+      console.log("🔥 Attempting registration with Firebase...");
+      const result = await authService.signUp(
+        email,
+        password,
+        firstName,
+        lastName,
+        role
+      );
+      if (result.success) {
+        console.log("✅ Registration successful");
+        setUser(result.user);
+        setUserRole(authService.getUserRole());
+      } else {
+        console.error("❌ Registration failed:", result.error);
+        setError(result.error);
+        throw new Error(result.error);
       }
     } catch (error) {
-      console.error(error);
+      console.error("❌ Registration error:", error);
+      setError(error.message);
     } finally {
       setLoading(false);
     }
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('token');
+  const logout = async () => {
+    try {
+      await authService.signOut();
+      setUser(null);
+      setUserRole(null);
+    } catch (error) {
+      console.error("❌ Logout error:", error);
+    }
   };
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      const verifyToken = async () => {
-        try {
-          const userResponse = await fetch('http://localhost:5001/api/auth/me', {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-          const userData = await userResponse.json();
-          if (userResponse.ok) {
-            setUser(userData);
-          } else {
-            localStorage.removeItem('token');
-          }
-        } catch (error) {
-          localStorage.removeItem('token');
-        }
-      };
-      verifyToken();
-    }
+    console.log("🔄 Initializing auth service...");
+    const initAuth = async () => {
+      try {
+        await authService.init();
+        setLoading(false);
+      } catch (error) {
+        console.error("❌ Auth initialization error:", error);
+        setLoading(false);
+      }
+    };
+
+    // Set up auth state listener
+    const unsubscribe = authService.onAuthStateChanged((user, role) => {
+      console.log(
+        "🔄 Auth state changed:",
+        user ? user.uid : "null",
+        "Role:",
+        role
+      );
+      setUser(user);
+      setUserRole(role);
+      setLoading(false);
+    });
+
+    initAuth();
+
+    return unsubscribe;
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider
+      value={{ user, userRole, loading, error, login, register, logout }}
+    >
       {children}
     </AuthContext.Provider>
   );
