@@ -18,6 +18,11 @@ class AttendanceManager: ObservableObject {
     private var authToken: String?
     private var currentUserId: String?
     private var onFetchFinished: () -> Void = {}
+    
+    // Public property to check if manager is ready
+    var isReady: Bool {
+        return modelContext != nil
+    }
 
     // MARK: - Setup
     func setup(
@@ -72,41 +77,46 @@ class AttendanceManager: ObservableObject {
     }
 
     func getMonthlyAttendance() -> String {
-        let cal = Calendar.current
+        // Safety check - return default if not ready
+        guard self.modelContext != nil else { return "0/0" }
+        
+        let calendar = Calendar.current
         let now = Date()
-        guard let month = cal.dateInterval(of: .month, for: now) else { return "0/0" }
+        guard let month = calendar.dateInterval(of: .month, for: now) else { return "0/0" }
 
-        let daysAttended = Set(
-            attendanceRecords
-                .filter { month.contains($0.timestamp) }
-                .map { cal.startOfDay(for: $0.timestamp) }
-        ).count
-
-        let daysInMonth = cal.range(of: .day, in: .month, for: now)!.count
-        return "\(daysAttended)/\(daysInMonth)"
+        let (scheduled, attended) = scheduledVsAttendedDates(in: month)
+        return "\(attended.count)/\(scheduled.count)"
     }
 
     func getTotalAttendanceDays() -> Int {
-        Set(attendanceRecords.map { Calendar.current.startOfDay(for: $0.timestamp) }).count
+        // Safety check - return default if not ready
+        guard self.modelContext != nil else { return 0 }
+        
+        let interval = overallScheduleInterval()
+        let (_, attended) = scheduledVsAttendedDates(in: interval)
+        return attended.count
     }
 
     func getCurrentStreak() -> Int {
-        let cal = Calendar.current
-        let dates = attendanceRecords
-            .map { $0.timestamp }        // <- fix here
-            .map(cal.startOfDay(for:))
-            .sorted(by: >)
+        // Safety check - return default if not ready
+        guard self.modelContext != nil else { return 0 }
+        
+        let calendar = Calendar.current
+        let classes = fetchAllClasses(modelContext: self.modelContext!)
+        guard !classes.isEmpty else { return 0 }
 
-        guard let latest = dates.first else { return 0 }
+        let today = calendar.startOfDay(for: Date())
+        let minDate = classes.map { $0.startDate }.filter { $0 > Date(timeIntervalSince1970: 0) }.min() ?? today
+        let interval = DateInterval(start: minDate, end: today)
+        let (scheduled, attended) = scheduledVsAttendedDates(in: interval)
+        guard !scheduled.isEmpty else { return 0 }
 
-        var streak = 1
-        var expected = cal.date(byAdding: .day, value: -1, to: latest)!
-
-        for date in dates.dropFirst() {
-            if date == expected {
+        let sortedScheduled = scheduled.filter { $0 <= today }.sorted(by: >)
+        var streak = 0
+        for date in sortedScheduled {
+            if attended.contains(date) {
                 streak += 1
-                expected = cal.date(byAdding: .day, value: -1, to: expected)!
-            } else if date < expected {
+            } else if streak > 0 || date == sortedScheduled.first {
                 break
             }
         }
@@ -135,6 +145,109 @@ class AttendanceManager: ObservableObject {
             print("SwiftData fetch failed: \(error)")
         }
         DispatchQueue.main.async { self.onFetchFinished() }
+    }
+
+    // MARK: - Helpers for scheduled vs attended
+    private func fetchAllClasses(modelContext: ModelContext) -> [SchoolClass] {
+        do {
+            let descriptor = FetchDescriptor<SchoolClass>()
+            let classes = try modelContext.fetch(descriptor)
+            // Filter out any classes with invalid dates
+            return classes.filter { 
+                $0.startDate > Date(timeIntervalSince1970: 0) && 
+                $0.startDate < Date(timeIntervalSince1970: 365 * 24 * 60 * 60 * 10) // 10 years from now
+            }
+        } catch {
+            print("Error fetching classes: \(error)")
+            return []
+        }
+    }
+
+    private func overallScheduleInterval() -> DateInterval {
+        // Safety check - return safe default if not ready
+        guard self.modelContext != nil else { 
+            let now = Date()
+            return DateInterval(start: now, end: now) 
+        }
+        
+        let classes = fetchAllClasses(modelContext: self.modelContext!)
+        guard !classes.isEmpty else {
+            let now = Date()
+            return DateInterval(start: now, end: now)
+        }
+        
+        let calendar = Calendar.current
+        let now = Date()
+        
+        // Filter out invalid dates and find the earliest valid start date
+        let validStartDates = classes.map { $0.startDate }.filter { $0 > Date(timeIntervalSince1970: 0) }
+        guard !validStartDates.isEmpty else {
+            return DateInterval(start: now, end: now)
+        }
+        
+        let start = validStartDates.min() ?? now
+        let safeStart = calendar.startOfDay(for: start)
+        
+        // Ensure we don't create an invalid interval
+        guard safeStart <= now else {
+            return DateInterval(start: now, end: now)
+        }
+        
+        return DateInterval(start: safeStart, end: now)
+    }
+
+    private func scheduledVsAttendedDates(in interval: DateInterval) -> (scheduled: Set<Date>, attended: Set<Date>) {
+        // Safety check - return empty sets if not ready
+        guard self.modelContext != nil else { return ([], []) }
+        
+        let calendar = Calendar.current
+        let classes = fetchAllClasses(modelContext: self.modelContext!)
+        guard !classes.isEmpty else { return ([], []) }
+
+        // Build scheduled days set: days in interval that have at least one class scheduled
+        var scheduledDays: Set<Date> = []
+        for schoolClass in classes {
+            // Ensure the date is valid
+            let startDate = schoolClass.startDate
+            guard startDate > Date(timeIntervalSince1970: 0) else { continue }
+            
+            // Ensure the date is within reasonable bounds
+            let maxFutureDate = calendar.date(byAdding: .year, value: 10, to: Date()) ?? Date()
+            guard startDate <= maxFutureDate else { continue }
+            
+            let classDay = calendar.startOfDay(for: startDate)
+            if interval.contains(startDate) {
+                scheduledDays.insert(classDay)
+            }
+        }
+
+        // Build attended days set from attendance records intersecting scheduled days
+        let attendedDays = Set(
+            attendanceRecords
+                .filter { 
+                    let timestamp = $0.timestamp
+                    guard timestamp > Date(timeIntervalSince1970: 0) else { return false }
+                    
+                    // Ensure the date is within reasonable bounds
+                    let maxFutureDate = calendar.date(byAdding: .year, value: 10, to: Date()) ?? Date()
+                    guard timestamp <= maxFutureDate else { return false }
+                    
+                    return interval.contains(timestamp)
+                }
+                .compactMap { record in
+                    let timestamp = record.timestamp
+                    guard timestamp > Date(timeIntervalSince1970: 0) else { return nil }
+                    
+                    // Ensure the date is within reasonable bounds
+                    let maxFutureDate = calendar.date(byAdding: .year, value: 10, to: Date()) ?? Date()
+                    guard timestamp <= maxFutureDate else { return nil }
+                    
+                    return calendar.startOfDay(for: timestamp)
+                }
+                .filter { scheduledDays.contains($0) }
+        )
+
+        return (scheduledDays, attendedDays)
     }
 
     // MARK: - Network / stub

@@ -197,25 +197,41 @@ struct StatsSection: View {
         HStack(spacing: 15) {
             StatCard(
                 title: "This Month",
-                value: "\(attendanceManager.getMonthlyAttendance())",
+                value: monthlyAttendanceValue,
                 icon: "calendar",
                 color: .purple
             )
 
             StatCard(
                 title: "Total Days",
-                value: "\(attendanceManager.getTotalAttendanceDays())",
+                value: totalDaysValue,
                 icon: "chart.bar.fill",
                 color: .orange
             )
 
             StatCard(
                 title: "Streak",
-                value: "\(attendanceManager.getCurrentStreak())",
+                value: streakValue,
                 icon: "flame.fill",
                 color: .red
             )
         }
+    }
+    
+    // Computed properties for safe values
+    private var monthlyAttendanceValue: String {
+        guard attendanceManager.isReady else { return "0/0" }
+        return attendanceManager.getMonthlyAttendance()
+    }
+    
+    private var totalDaysValue: String {
+        guard attendanceManager.isReady else { return "0" }
+        return "\(attendanceManager.getTotalAttendanceDays())"
+    }
+    
+    private var streakValue: String {
+        guard attendanceManager.isReady else { return "0" }
+        return "\(attendanceManager.getCurrentStreak())"
     }
 }
 

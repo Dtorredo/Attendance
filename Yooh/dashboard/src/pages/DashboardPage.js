@@ -34,15 +34,14 @@ import {
   Fab,
   Tabs,
   Tab,
+  Tooltip,
 } from "@mui/material";
 import {
   School as SchoolIcon,
   People as PeopleIcon,
   Assignment as AssignmentIcon,
   EventAvailable as AttendanceIcon,
-  Add as AddIcon,
   Class as ClassIcon,
-  Schedule as ScheduleIcon,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 
@@ -150,43 +149,50 @@ const DashboardPage = () => {
     }
   };
 
-  const getStudentStats = (student) => {
-    const studentAttendance = attendance.filter(
-      (record) => record.userId === student.id
-    );
-    const studentAssignments = assignments.filter(
-      (assignment) => assignment.userId === student.id
-    );
+  const getStudentStats = React.useCallback(
+    (student) => {
+      const studentAttendance = attendance.filter(
+        (record) => record.userId === student.id
+      );
+      const studentClasses = classes.filter((c) => c.userId === student.id);
+      const studentAssignments = assignments.filter(
+        (assignment) => assignment.userId === student.id
+      );
 
-    const totalClasses = studentAttendance.length;
-    const attendedClasses = studentAttendance.filter(
-      (record) => record.status === "present"
-    ).length;
-    const attendanceRate =
-      totalClasses > 0 ? Math.round((attendedClasses / totalClasses) * 100) : 0;
+      // Total classes should reflect assigned classes, not attendance records
+      const totalClasses = studentClasses.length;
+      const attendedClasses = studentAttendance.filter(
+        (record) => record.status === "present"
+      ).length;
+      const attendanceRate =
+        totalClasses > 0
+          ? Math.round((attendedClasses / totalClasses) * 100)
+          : 0;
 
-    const totalAssignments = studentAssignments.length;
-    const completedAssignments = studentAssignments.filter(
-      (assignment) => assignment.isCompleted
-    ).length;
-    const completionRate =
-      totalAssignments > 0
-        ? Math.round((completedAssignments / totalAssignments) * 100)
-        : 0;
+      const totalAssignments = studentAssignments.length;
+      const completedAssignments = studentAssignments.filter(
+        (assignment) => assignment.isCompleted
+      ).length;
+      const completionRate =
+        totalAssignments > 0
+          ? Math.round((completedAssignments / totalAssignments) * 100)
+          : 0;
 
-    return {
-      attendance: {
-        total: totalClasses,
-        attended: attendedClasses,
-        rate: attendanceRate,
-      },
-      assignments: {
-        total: totalAssignments,
-        completed: completedAssignments,
-        rate: completionRate,
-      },
-    };
-  };
+      return {
+        attendance: {
+          total: totalClasses,
+          attended: attendedClasses,
+          rate: attendanceRate,
+        },
+        assignments: {
+          total: totalAssignments,
+          completed: completedAssignments,
+          rate: completionRate,
+        },
+      };
+    },
+    [attendance, classes, assignments]
+  );
 
   const handleSortRequest = (property) => {
     const isAsc = orderBy === property && order === "asc";
@@ -236,7 +242,7 @@ const DashboardPage = () => {
     };
 
     return studentsWithStats.sort(comparator);
-  }, [students, attendance, assignments, order, orderBy]);
+  }, [students, order, orderBy, getStudentStats]);
 
   const handleLogout = () => {
     logout();
@@ -401,7 +407,17 @@ const DashboardPage = () => {
         {/* Stats Cards */}
         <Grid container spacing={3} sx={{ mb: 4 }}>
           <Grid item xs={12} sm={6} md={3}>
-            <Card>
+            <Card
+              sx={{
+                borderRadius: 2,
+                border: "1px solid",
+                borderColor: "divider",
+                background: "linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)",
+                transition: "all .2s ease",
+                boxShadow: 1,
+                "&:hover": { transform: "translateY(-3px)", boxShadow: 8 },
+              }}
+            >
               <CardContent>
                 <Box sx={{ display: "flex", alignItems: "center" }}>
                   <PeopleIcon
@@ -418,7 +434,17 @@ const DashboardPage = () => {
             </Card>
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
-            <Card>
+            <Card
+              sx={{
+                borderRadius: 2,
+                border: "1px solid",
+                borderColor: "divider",
+                background: "linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)",
+                transition: "all .2s ease",
+                boxShadow: 1,
+                "&:hover": { transform: "translateY(-3px)", boxShadow: 8 },
+              }}
+            >
               <CardContent>
                 <Box sx={{ display: "flex", alignItems: "center" }}>
                   <AttendanceIcon
@@ -435,7 +461,17 @@ const DashboardPage = () => {
             </Card>
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
-            <Card>
+            <Card
+              sx={{
+                borderRadius: 2,
+                border: "1px solid",
+                borderColor: "divider",
+                background: "linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)",
+                transition: "all .2s ease",
+                boxShadow: 1,
+                "&:hover": { transform: "translateY(-3px)", boxShadow: 8 },
+              }}
+            >
               <CardContent>
                 <Box sx={{ display: "flex", alignItems: "center" }}>
                   <AssignmentIcon
@@ -452,7 +488,17 @@ const DashboardPage = () => {
             </Card>
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
-            <Card>
+            <Card
+              sx={{
+                borderRadius: 2,
+                border: "1px solid",
+                borderColor: "divider",
+                background: "linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)",
+                transition: "all .2s ease",
+                boxShadow: 1,
+                "&:hover": { transform: "translateY(-3px)", boxShadow: 8 },
+              }}
+            >
               <CardContent>
                 <Box sx={{ display: "flex", alignItems: "center" }}>
                   <SchoolIcon
@@ -596,23 +642,27 @@ const DashboardPage = () => {
       </Container>
 
       {/* Floating Action Buttons */}
-      <Fab
-        color="primary"
-        aria-label="add class"
-        sx={{ position: "fixed", bottom: 80, right: 16 }}
-        onClick={() => setOpenClassDialog(true)}
-      >
-        <ClassIcon />
-      </Fab>
+      <Tooltip title="Create new class" placement="left">
+        <Fab
+          color="primary"
+          aria-label="add class"
+          sx={{ position: "fixed", bottom: 88, right: 16 }}
+          onClick={() => setOpenClassDialog(true)}
+        >
+          <ClassIcon />
+        </Fab>
+      </Tooltip>
 
-      <Fab
-        color="secondary"
-        aria-label="add assignment"
-        sx={{ position: "fixed", bottom: 16, right: 16 }}
-        onClick={() => setOpenAssignmentDialog(true)}
-      >
-        <AssignmentIcon />
-      </Fab>
+      <Tooltip title="Create new assignment" placement="left">
+        <Fab
+          color="secondary"
+          aria-label="add assignment"
+          sx={{ position: "fixed", bottom: 24, right: 16 }}
+          onClick={() => setOpenAssignmentDialog(true)}
+        >
+          <AssignmentIcon />
+        </Fab>
+      </Tooltip>
 
       {/* Class Creation Dialog */}
       <Dialog
@@ -621,129 +671,218 @@ const DashboardPage = () => {
         maxWidth="md"
         fullWidth
       >
-        <DialogTitle>Create New Class</DialogTitle>
+        <DialogTitle>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <ClassIcon color="primary" />
+            Create New Class
+          </Box>
+        </DialogTitle>
+        <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)} centered>
+          <Tab label="Basics" />
+          <Tab label="Schedule" />
+          <Tab label="Students" />
+        </Tabs>
         <DialogContent>
           <Box sx={{ mt: 2 }}>
             <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Class Name"
-                  value={classForm.name}
-                  onChange={(e) =>
-                    setClassForm({ ...classForm, name: e.target.value })
-                  }
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <FormControl fullWidth>
-                  <InputLabel>Day of Week</InputLabel>
-                  <Select
-                    value={classForm.dayOfWeek}
-                    onChange={(e) =>
-                      setClassForm({ ...classForm, dayOfWeek: e.target.value })
-                    }
-                  >
-                    <MenuItem value="monday">Monday</MenuItem>
-                    <MenuItem value="tuesday">Tuesday</MenuItem>
-                    <MenuItem value="wednesday">Wednesday</MenuItem>
-                    <MenuItem value="thursday">Thursday</MenuItem>
-                    <MenuItem value="friday">Friday</MenuItem>
-                    <MenuItem value="saturday">Saturday</MenuItem>
-                    <MenuItem value="sunday">Sunday</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
+              {activeTab === 0 && (
+                <>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      fullWidth
+                      label="Class Name"
+                      value={classForm.name}
+                      onChange={(e) =>
+                        setClassForm({ ...classForm, name: e.target.value })
+                      }
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <FormControl fullWidth variant="outlined">
+                      <InputLabel id="class-dayofweek-label">
+                        Day of Week
+                      </InputLabel>
+                      <Select
+                        labelId="class-dayofweek-label"
+                        id="class-dayofweek"
+                        label="Day of Week"
+                        value={classForm.dayOfWeek}
+                        onChange={(e) =>
+                          setClassForm({
+                            ...classForm,
+                            dayOfWeek: e.target.value,
+                          })
+                        }
+                      >
+                        <MenuItem value="monday">Monday</MenuItem>
+                        <MenuItem value="tuesday">Tuesday</MenuItem>
+                        <MenuItem value="wednesday">Wednesday</MenuItem>
+                        <MenuItem value="thursday">Thursday</MenuItem>
+                        <MenuItem value="friday">Friday</MenuItem>
+                        <MenuItem value="saturday">Saturday</MenuItem>
+                        <MenuItem value="sunday">Sunday</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="Description"
+                      multiline
+                      rows={2}
+                      value={classForm.description}
+                      onChange={(e) =>
+                        setClassForm({
+                          ...classForm,
+                          description: e.target.value,
+                        })
+                      }
+                    />
+                  </Grid>
+                </>
+              )}
+              {activeTab === 1 && (
+                <>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      fullWidth
+                      label="Start Time"
+                      type="time"
+                      value={classForm.startTime}
+                      onChange={(e) =>
+                        setClassForm({
+                          ...classForm,
+                          startTime: e.target.value,
+                        })
+                      }
+                      InputLabelProps={{ shrink: true }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      fullWidth
+                      label="End Time"
+                      type="time"
+                      value={classForm.endTime}
+                      onChange={(e) =>
+                        setClassForm({ ...classForm, endTime: e.target.value })
+                      }
+                      InputLabelProps={{ shrink: true }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      fullWidth
+                      label="Start Date"
+                      type="date"
+                      value={classForm.startDate}
+                      onChange={(e) =>
+                        setClassForm({
+                          ...classForm,
+                          startDate: e.target.value,
+                        })
+                      }
+                      InputLabelProps={{ shrink: true }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      fullWidth
+                      label="End Date"
+                      type="date"
+                      value={classForm.endDate}
+                      onChange={(e) =>
+                        setClassForm({ ...classForm, endDate: e.target.value })
+                      }
+                      InputLabelProps={{ shrink: true }}
+                    />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="Location"
+                      value={classForm.location}
+                      onChange={(e) =>
+                        setClassForm({ ...classForm, location: e.target.value })
+                      }
+                    />
+                  </Grid>
+                </>
+              )}
+              {activeTab === 2 && (
+                <Grid item xs={12}>
+                  <FormControl fullWidth variant="outlined">
+                    <InputLabel id="class-assign-students-label">
+                      Assign to Students
+                    </InputLabel>
+                    <Select
+                      labelId="class-assign-students-label"
+                      id="class-assign-students"
+                      label="Assign to Students"
+                      multiple
+                      value={classForm.selectedStudents}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        const isSelectAll =
+                          value[value.length - 1] === "__all__";
+                        if (isSelectAll) {
+                          const allIds = students.map((s) => s.id);
+                          const allSelected =
+                            classForm.selectedStudents.length === allIds.length;
+                          setClassForm({
+                            ...classForm,
+                            selectedStudents: allSelected ? [] : allIds,
+                          });
+                        } else {
+                          setClassForm({
+                            ...classForm,
+                            selectedStudents: value,
+                          });
+                        }
+                      }}
+                    >
+                      <MenuItem value="__all__">Select All</MenuItem>
+                      {students.map((student) => (
+                        <MenuItem key={student.id} value={student.id}>
+                          {student.firstName} {student.lastName} (
+                          {student.email})
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+              )}
               <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Description"
-                  multiline
-                  rows={2}
-                  value={classForm.description}
-                  onChange={(e) =>
-                    setClassForm({ ...classForm, description: e.target.value })
-                  }
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Start Time"
-                  type="time"
-                  value={classForm.startTime}
-                  onChange={(e) =>
-                    setClassForm({ ...classForm, startTime: e.target.value })
-                  }
-                  InputLabelProps={{ shrink: true }}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="End Time"
-                  type="time"
-                  value={classForm.endTime}
-                  onChange={(e) =>
-                    setClassForm({ ...classForm, endTime: e.target.value })
-                  }
-                  InputLabelProps={{ shrink: true }}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Start Date"
-                  type="date"
-                  value={classForm.startDate}
-                  onChange={(e) =>
-                    setClassForm({ ...classForm, startDate: e.target.value })
-                  }
-                  InputLabelProps={{ shrink: true }}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="End Date"
-                  type="date"
-                  value={classForm.endDate}
-                  onChange={(e) =>
-                    setClassForm({ ...classForm, endDate: e.target.value })
-                  }
-                  InputLabelProps={{ shrink: true }}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Location"
-                  value={classForm.location}
-                  onChange={(e) =>
-                    setClassForm({ ...classForm, location: e.target.value })
-                  }
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <FormControl fullWidth>
-                  <InputLabel>Assign to Students</InputLabel>
-                  <Select
-                    multiple
-                    value={classForm.selectedStudents}
-                    onChange={(e) =>
-                      setClassForm({
-                        ...classForm,
-                        selectedStudents: e.target.value,
-                      })
-                    }
-                  >
-                    {students.map((student) => (
-                      <MenuItem key={student.id} value={student.id}>
-                        {student.firstName} {student.lastName} ({student.email})
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
+                <Card variant="outlined">
+                  <CardContent>
+                    <Typography
+                      variant="subtitle2"
+                      color="text.secondary"
+                      gutterBottom
+                    >
+                      Live Preview
+                    </Typography>
+                    <Typography variant="h6">
+                      {classForm.name || "Untitled Class"}
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ mb: 1 }}
+                    >
+                      {classForm.description || "No description yet"}
+                    </Typography>
+                    <Chip
+                      size="small"
+                      label={classForm.dayOfWeek || "Day not set"}
+                      sx={{ mr: 1 }}
+                    />
+                    <Chip
+                      size="small"
+                      label={classForm.location || "Location TBD"}
+                    />
+                  </CardContent>
+                </Card>
               </Grid>
             </Grid>
           </Box>
@@ -771,106 +910,193 @@ const DashboardPage = () => {
         maxWidth="md"
         fullWidth
       >
-        <DialogTitle>Create New Assignment</DialogTitle>
+        <DialogTitle>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <AssignmentIcon color="secondary" />
+            Create New Assignment
+          </Box>
+        </DialogTitle>
+        <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)} centered>
+          <Tab label="Basics" />
+          <Tab label="Due" />
+          <Tab label="Students" />
+        </Tabs>
         <DialogContent>
           <Box sx={{ mt: 2 }}>
             <Grid container spacing={2}>
+              {activeTab === 0 && (
+                <>
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="Assignment Title"
+                      value={assignmentForm.title}
+                      onChange={(e) =>
+                        setAssignmentForm({
+                          ...assignmentForm,
+                          title: e.target.value,
+                        })
+                      }
+                    />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="Description"
+                      multiline
+                      rows={3}
+                      value={assignmentForm.description}
+                      onChange={(e) =>
+                        setAssignmentForm({
+                          ...assignmentForm,
+                          description: e.target.value,
+                        })
+                      }
+                    />
+                  </Grid>
+                </>
+              )}
+              {activeTab === 1 && (
+                <>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      fullWidth
+                      label="Due Date"
+                      type="date"
+                      value={assignmentForm.dueDate}
+                      onChange={(e) =>
+                        setAssignmentForm({
+                          ...assignmentForm,
+                          dueDate: e.target.value,
+                        })
+                      }
+                      InputLabelProps={{ shrink: true }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      fullWidth
+                      label="Due Time"
+                      type="time"
+                      value={assignmentForm.dueTime}
+                      onChange={(e) =>
+                        setAssignmentForm({
+                          ...assignmentForm,
+                          dueTime: e.target.value,
+                        })
+                      }
+                      InputLabelProps={{ shrink: true }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <FormControl fullWidth variant="outlined">
+                      <InputLabel id="assignment-priority-label">
+                        Priority
+                      </InputLabel>
+                      <Select
+                        labelId="assignment-priority-label"
+                        id="assignment-priority"
+                        label="Priority"
+                        value={assignmentForm.priority}
+                        onChange={(e) =>
+                          setAssignmentForm({
+                            ...assignmentForm,
+                            priority: e.target.value,
+                          })
+                        }
+                      >
+                        <MenuItem value="Low">Low</MenuItem>
+                        <MenuItem value="Medium">Medium</MenuItem>
+                        <MenuItem value="High">High</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                </>
+              )}
+              {activeTab === 2 && (
+                <Grid item xs={12}>
+                  <FormControl fullWidth variant="outlined">
+                    <InputLabel id="assignment-assign-students-label">
+                      Assign to Students
+                    </InputLabel>
+                    <Select
+                      labelId="assignment-assign-students-label"
+                      id="assignment-assign-students"
+                      label="Assign to Students"
+                      multiple
+                      value={assignmentForm.selectedStudents}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        const isSelectAll =
+                          value[value.length - 1] === "__all__";
+                        if (isSelectAll) {
+                          const allIds = students.map((s) => s.id);
+                          const allSelected =
+                            assignmentForm.selectedStudents.length ===
+                            allIds.length;
+                          setAssignmentForm({
+                            ...assignmentForm,
+                            selectedStudents: allSelected ? [] : allIds,
+                          });
+                        } else {
+                          setAssignmentForm({
+                            ...assignmentForm,
+                            selectedStudents: value,
+                          });
+                        }
+                      }}
+                    >
+                      <MenuItem value="__all__">Select All</MenuItem>
+                      {students.map((student) => (
+                        <MenuItem key={student.id} value={student.id}>
+                          {student.firstName} {student.lastName} (
+                          {student.email})
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+              )}
               <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Assignment Title"
-                  value={assignmentForm.title}
-                  onChange={(e) =>
-                    setAssignmentForm({
-                      ...assignmentForm,
-                      title: e.target.value,
-                    })
-                  }
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Description"
-                  multiline
-                  rows={3}
-                  value={assignmentForm.description}
-                  onChange={(e) =>
-                    setAssignmentForm({
-                      ...assignmentForm,
-                      description: e.target.value,
-                    })
-                  }
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Due Date"
-                  type="date"
-                  value={assignmentForm.dueDate}
-                  onChange={(e) =>
-                    setAssignmentForm({
-                      ...assignmentForm,
-                      dueDate: e.target.value,
-                    })
-                  }
-                  InputLabelProps={{ shrink: true }}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Due Time"
-                  type="time"
-                  value={assignmentForm.dueTime}
-                  onChange={(e) =>
-                    setAssignmentForm({
-                      ...assignmentForm,
-                      dueTime: e.target.value,
-                    })
-                  }
-                  InputLabelProps={{ shrink: true }}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <FormControl fullWidth>
-                  <InputLabel>Priority</InputLabel>
-                  <Select
-                    value={assignmentForm.priority}
-                    onChange={(e) =>
-                      setAssignmentForm({
-                        ...assignmentForm,
-                        priority: e.target.value,
-                      })
-                    }
-                  >
-                    <MenuItem value="Low">Low</MenuItem>
-                    <MenuItem value="Medium">Medium</MenuItem>
-                    <MenuItem value="High">High</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12}>
-                <FormControl fullWidth>
-                  <InputLabel>Assign to Students</InputLabel>
-                  <Select
-                    multiple
-                    value={assignmentForm.selectedStudents}
-                    onChange={(e) =>
-                      setAssignmentForm({
-                        ...assignmentForm,
-                        selectedStudents: e.target.value,
-                      })
-                    }
-                  >
-                    {students.map((student) => (
-                      <MenuItem key={student.id} value={student.id}>
-                        {student.firstName} {student.lastName} ({student.email})
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
+                <Card variant="outlined">
+                  <CardContent>
+                    <Typography
+                      variant="subtitle2"
+                      color="text.secondary"
+                      gutterBottom
+                    >
+                      Live Preview
+                    </Typography>
+                    <Typography variant="h6">
+                      {assignmentForm.title || "Untitled Assignment"}
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ mb: 1 }}
+                    >
+                      {assignmentForm.description || "No description yet"}
+                    </Typography>
+                    <Chip
+                      size="small"
+                      color="default"
+                      label={`Priority: ${assignmentForm.priority}`}
+                      sx={{ mr: 1 }}
+                    />
+                    <Chip
+                      size="small"
+                      label={
+                        assignmentForm.dueDate
+                          ? `Due ${assignmentForm.dueDate}${
+                              assignmentForm.dueTime
+                                ? " " + assignmentForm.dueTime
+                                : ""
+                            }`
+                          : "No due date set"
+                      }
+                    />
+                  </CardContent>
+                </Card>
               </Grid>
             </Grid>
           </Box>

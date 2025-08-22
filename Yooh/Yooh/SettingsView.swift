@@ -44,7 +44,6 @@ struct SettingsView: View {
                 VStack(spacing: 20) {
                     appearanceSection
                     appSettingsSection
-                    schoolLocationSection
                     aboutSection
                     
                     SignOutSection { showingSignOutAlert = true }
@@ -112,6 +111,9 @@ struct SettingsView: View {
         }
     }
     
+    @State private var showNotifications = false
+    @State private var showSchoolSettings = false
+
     private var appSettingsSection: some View {
         SettingsSection(title: "App Settings", icon: "gearshape.fill") {
             VStack(spacing: 16) {
@@ -120,46 +122,25 @@ struct SettingsView: View {
                     subtitle: "Manage push notifications",
                     icon: "bell.fill",
                     iconColor: .orange
-                ) { }
+                ) { showNotifications = true }
                 Divider().background(dividerColor)
-                SettingsRow(
-                    title: "Privacy",
-                    subtitle: "Data and privacy settings",
-                    icon: "lock.fill",
-                    iconColor: .blue
-                ) { }
-                Divider().background(dividerColor)
-                SettingsRow(
-                    title: "Storage",
-                    subtitle: "Manage app storage",
-                    icon: "externaldrive.fill",
-                    iconColor: .green
-                ) { }
-            }
-        }
-    }
-    
-    private var schoolLocationSection: some View {
-        SettingsSection(title: "School Location", icon: "building.2.fill") {
-            VStack(spacing: 16) {
                 SettingsRow(
                     title: "School Location",
-                    subtitle: "Set your school's location for attendance",
-                    icon: "location.circle.fill",
+                    subtitle: "View or add your school",
+                    icon: "building.2.fill",
                     iconColor: .purple
-                ) { }
-                if let schoolLocation = schoolLocationManager.activeSchoolLocation {
-                    Divider().background(dividerColor)
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Current Location")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.white.opacity(0.8))
-                        Text("\(schoolLocation.coordinate.latitude), \(schoolLocation.coordinate.longitude)")
-                            .font(.system(size: 12))
-                            .foregroundColor(.white.opacity(0.6))
-                    }
-                }
+                ) { showSchoolSettings = true }
             }
+        }
+        .sheet(isPresented: $showNotifications) {
+            NotificationsSettingsView()
+                .environmentObject(authManager)
+        }
+        .sheet(isPresented: $showSchoolSettings) {
+            SchoolSettingsView(
+                schoolLocationManager: schoolLocationManager,
+                themeManager: themeManager
+            )
         }
     }
     

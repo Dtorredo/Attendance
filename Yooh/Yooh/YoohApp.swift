@@ -62,6 +62,12 @@ struct YoohApp: App {
                         let context = sharedModelContainer.mainContext
                         SyncService.shared.setModelContext(context)
                         MigrationService.shared.setModelContext(context)
+                        // Notification permission and scheduling
+                        if let userId = authManager.currentUserId {
+                            NotificationManager.shared.requestPermission { _ in
+                                NotificationManager.shared.rescheduleAllNotifications(modelContext: context, currentUserId: userId)
+                            }
+                        }
                     }
             } else {
                 LoginView()

@@ -37,36 +37,32 @@ struct SchoolSettingsView: View {
                     // All Schools Section
                     VStack(alignment: .leading, spacing: 15) {
                         HStack {
-                            Text("All Schools")
+                            Text("School")
                                 .font(.system(size: 20, weight: .bold))
                                 .foregroundColor(primaryTextColor)
                             
                             Spacer()
                             
-                            Button(action: { showingAddSchool = true }) {
-                                Image(systemName: "plus.circle.fill")
-                                    .font(.system(size: 24))
-                                    .foregroundColor(themeManager.colorTheme.mainColor)
+                            // Add button hidden after first set
+                            if schoolLocationManager.schoolLocations.isEmpty {
+                                Button(action: { showingAddSchool = true }) {
+                                    Image(systemName: "plus.circle.fill")
+                                        .font(.system(size: 24))
+                                        .foregroundColor(themeManager.colorTheme.mainColor)
+                                }
                             }
                         }
                         
-                        if schoolLocationManager.schoolLocations.isEmpty {
-                            EmptySchoolsView()
+                        if let school = schoolLocationManager.activeSchoolLocation {
+                            // Single view-only row
+                            SchoolLocationRow(
+                                school: school,
+                                isActive: true,
+                                onSelect: {},
+                                onDelete: {}
+                            )
                         } else {
-                            VStack(spacing: 12) {
-                                ForEach(schoolLocationManager.schoolLocations) { school in
-                                    SchoolLocationRow(
-                                        school: school,
-                                        isActive: school.id == schoolLocationManager.activeSchoolLocation?.id,
-                                        onSelect: {
-                                            schoolLocationManager.setActiveSchool(school)
-                                        },
-                                        onDelete: {
-                                            schoolLocationManager.deleteSchoolLocation(school)
-                                        }
-                                    )
-                                }
-                            }
+                            EmptySchoolsView()
                         }
                     }
                     .padding(20)
@@ -227,7 +223,7 @@ struct AddSchoolView: View {
     @State private var schoolAddress = ""
     @State private var latitude = ""
     @State private var longitude = ""
-    @State private var radius = "500"
+    @State private var radius = "300"
     
     var body: some View {
         NavigationView {
@@ -242,8 +238,12 @@ struct AddSchoolView: View {
                         .keyboardType(.decimalPad)
                     TextField("Longitude", text: $longitude)
                         .keyboardType(.decimalPad)
-                    TextField("Radius (meters)", text: $radius)
-                        .keyboardType(.numberPad)
+                    HStack {
+                        Text("Radius (meters)")
+                        Spacer()
+                        Text("300 (fixed)")
+                            .foregroundColor(.secondary)
+                    }
                 }
                 
                 Section {
@@ -269,21 +269,19 @@ struct AddSchoolView: View {
         !schoolName.isEmpty &&
         !schoolAddress.isEmpty &&
         Double(latitude) != nil &&
-        Double(longitude) != nil &&
-        Double(radius) != nil
+        Double(longitude) != nil
     }
     
     private func addSchool() {
         guard let lat = Double(latitude),
-              let lng = Double(longitude),
-              let rad = Double(radius) else { return }
+              let lng = Double(longitude) else { return }
         
         let newSchool = SchoolLocation(
             name: schoolName,
             address: schoolAddress,
             latitude: lat,
             longitude: lng,
-            radius: rad
+            radius: 300.0
         )
         
         schoolLocationManager.addSchoolLocation(newSchool)

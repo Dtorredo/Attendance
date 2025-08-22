@@ -77,7 +77,9 @@ struct AddClassView: View {
             isRecurring: true 
         )
         modelContext.insert(newClass)
-        NotificationManager.shared.scheduleNotification(for: newClass)
+        if let userId = authManager.currentUserId {
+            NotificationManager.shared.rescheduleAllNotifications(modelContext: modelContext, currentUserId: userId)
+        }
         onAdd?()
     }
 }

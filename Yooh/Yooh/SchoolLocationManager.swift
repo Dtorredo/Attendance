@@ -19,13 +19,13 @@ struct SchoolLocation: Codable, Identifiable {
     var isActive: Bool
     let dateCreated: Date
     
-    init(name: String, address: String, latitude: Double, longitude: Double, radius: Double = 500.0) {
+    init(name: String, address: String, latitude: Double, longitude: Double, radius: Double = 300.0) {
         self.id = UUID()
         self.name = name
         self.address = address
         self.latitude = latitude
         self.longitude = longitude
-        self.radius = radius
+        self.radius = min(300.0, radius)
         self.isActive = true
         self.dateCreated = Date()
     }
@@ -56,41 +56,22 @@ class SchoolLocationManager: ObservableObject {
     // MARK: - School Location Management
     
     func addSchoolLocation(_ location: SchoolLocation) {
-        // Deactivate other locations
-        for index in schoolLocations.indices {
-            schoolLocations[index].isActive = false
-        }
-        
+        // Allow only one-time setup; if already set, ignore
+        guard schoolLocations.isEmpty else { return }
         var newLocation = location
         newLocation.isActive = true
-        
-        schoolLocations.append(newLocation)
+        newLocation.radius = min(300.0, newLocation.radius)
+        schoolLocations = [newLocation]
         activeSchoolLocation = newLocation
         saveSchoolLocations()
     }
     
     func setActiveSchool(_ location: SchoolLocation) {
-        // Deactivate all schools
-        for index in schoolLocations.indices {
-            schoolLocations[index].isActive = false
-        }
-        
-        // Activate selected school
-        if let index = schoolLocations.firstIndex(where: { $0.id == location.id }) {
-            schoolLocations[index].isActive = true
-            activeSchoolLocation = schoolLocations[index]
-            saveSchoolLocations()
-        }
+        // Single location mode; no-op
     }
     
     func deleteSchoolLocation(_ location: SchoolLocation) {
-        schoolLocations.removeAll { $0.id == location.id }
-        
-        if activeSchoolLocation?.id == location.id {
-            activeSchoolLocation = schoolLocations.first { $0.isActive }
-        }
-        
-        saveSchoolLocations()
+        // Deleting is not allowed once set
     }
     
     // MARK: - Location Validation
@@ -157,7 +138,7 @@ class SchoolLocationManager: ObservableObject {
             address: "School Address",
             latitude: -1.191397,
             longitude: 36.655940,
-            radius: 500.0
+            radius: 300.0
         )
         addSchoolLocation(defaultSchool)
     }
