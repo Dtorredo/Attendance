@@ -24,6 +24,15 @@ class AuthManager: ObservableObject {
     @Published var currentUserId: String? {
         didSet { UserDefaults.standard.set(currentUserId, forKey: "currentUserId") }
     }
+    @Published var userFirstName: String? {
+        didSet { UserDefaults.standard.set(userFirstName, forKey: "userFirstName") }
+    }
+    @Published var userLastName: String? {
+        didSet { UserDefaults.standard.set(userLastName, forKey: "userLastName") }
+    }
+    @Published var userEmail: String? {
+        didSet { UserDefaults.standard.set(userEmail, forKey: "userEmail") }
+    }
 
     private var handle: AuthStateDidChangeListenerHandle?
     private let db = Firestore.firestore()
@@ -33,6 +42,9 @@ class AuthManager: ObservableObject {
         token = UserDefaults.standard.string(forKey: "authToken")
         userRole = UserDefaults.standard.string(forKey: "userRole")
         currentUserId = UserDefaults.standard.string(forKey: "currentUserId")
+        userFirstName = UserDefaults.standard.string(forKey: "userFirstName")
+        userLastName = UserDefaults.standard.string(forKey: "userLastName")
+        userEmail = UserDefaults.standard.string(forKey: "userEmail")
 
         handle = Auth.auth().addStateDidChangeListener { [weak self] _, user in
             self?.handleAuthChange(user: user)
@@ -161,6 +173,9 @@ class AuthManager: ObservableObject {
             errorMessage = nil
             userRole = nil
             currentUserId = nil
+            userFirstName = nil
+            userLastName = nil
+            userEmail = nil
             token = nil
         } catch {
             isLoading = false
@@ -188,6 +203,9 @@ class AuthManager: ObservableObject {
             token = nil
             userRole = nil
             currentUserId = nil
+            userFirstName = nil
+            userLastName = nil
+            userEmail = nil
         }
     }
 
@@ -260,6 +278,9 @@ class AuthManager: ObservableObject {
             try await self.db.collection("users").document(userId).setData(data)
         }
         userRole = role
+        userFirstName = firstName
+        userLastName = lastName
+        userEmail = email
     }
 
     private func fetchUserRole(userId: String) async throws {
@@ -274,13 +295,24 @@ class AuthManager: ObservableObject {
             return
         }
         
-        // Safely extract the role
+        // Safely extract the role and user info
         if let role = data["role"] as? String {
             userRole = role
             print("👤 User role fetched: \(role)")
         } else {
             print("⚠️ Role field not found or invalid for userId: \(userId)")
             userRole = nil
+        }
+        
+        // Extract user info
+        if let firstName = data["firstName"] as? String {
+            userFirstName = firstName
+        }
+        if let lastName = data["lastName"] as? String {
+            userLastName = lastName
+        }
+        if let email = data["email"] as? String {
+            userEmail = email
         }
     }
 

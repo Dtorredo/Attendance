@@ -66,6 +66,20 @@ class SchoolLocationManager: ObservableObject {
         saveSchoolLocations()
     }
     
+    func updateSchoolName(_ newName: String) {
+        guard let activeLocation = activeSchoolLocation else { return }
+        var updatedLocation = activeLocation
+        updatedLocation.name = newName
+        activeSchoolLocation = updatedLocation
+        
+        // Update in the array
+        if let index = schoolLocations.firstIndex(where: { $0.id == activeLocation.id }) {
+            schoolLocations[index] = updatedLocation
+        }
+        
+        saveSchoolLocations()
+    }
+    
     func setActiveSchool(_ location: SchoolLocation) {
         // Single location mode; no-op
     }

@@ -113,6 +113,7 @@ struct SettingsView: View {
     
     @State private var showNotifications = false
     @State private var showSchoolSettings = false
+    @State private var showSchoolNameEdit = false
 
     private var appSettingsSection: some View {
         SettingsSection(title: "App Settings", icon: "gearshape.fill") {
@@ -126,10 +127,19 @@ struct SettingsView: View {
                 Divider().background(dividerColor)
                 SettingsRow(
                     title: "School Location",
-                    subtitle: "View or add your school",
+                    subtitle: "View or add your school location",
                     icon: "building.2.fill",
                     iconColor: .purple
                 ) { showSchoolSettings = true }
+                Divider().background(dividerColor)
+                SettingsRow(
+                    title: "Edit School Name",
+                    subtitle: "Change the name of your school",
+                    icon: "pencil.tip.crop.circle.badge.plus",
+                    iconColor: .blue
+                ) {
+                    showSchoolNameEdit = true
+                }
             }
         }
         .sheet(isPresented: $showNotifications) {
@@ -142,18 +152,76 @@ struct SettingsView: View {
                 themeManager: themeManager
             )
         }
+        .sheet(isPresented: $showSchoolNameEdit) {
+            SchoolNameEditView(
+                schoolLocationManager: schoolLocationManager,
+                currentName: schoolLocationManager.activeSchoolLocation?.name ?? ""
+            )
+        }
     }
+    
+    private var schoolLocationSection: some View {
+        SettingsSection(title: "School Location", icon: "building.2.fill") {
+            VStack(spacing: 16) {
+                if let schoolLocation = schoolLocationManager.activeSchoolLocation {
+                    SettingsRow(
+                        title: "Current Location",
+                        subtitle: schoolLocation.name,
+                        icon: "location.circle.fill",
+                        iconColor: .purple
+                    ) { }
+                    Divider().background(dividerColor)
+                    SettingsRow(
+                        title: "School Name",
+                        subtitle: "Tap to edit",
+                        icon: "building.2.fill",
+                        iconColor: .blue
+                    ) {
+                        showSchoolNameEdit = true
+                    }
+                    Divider().background(dividerColor)
+                    SettingsRow(
+                        title: "Address",
+                        subtitle: schoolLocation.address,
+                        icon: "mappin.circle.fill",
+                        iconColor: .green
+                    ) { }
+                } else {
+                    SettingsRow(
+                        title: "School Location",
+                        subtitle: "Set your school's location for attendance",
+                        icon: "location.circle.fill",
+                        iconColor: .purple
+                    ) { showSchoolSettings = true }
+                }
+            }
+        }
+        .sheet(isPresented: $showSchoolSettings) {
+            SchoolSettingsView(
+                schoolLocationManager: schoolLocationManager,
+                themeManager: themeManager
+            )
+        }
+        .sheet(isPresented: $showSchoolNameEdit) {
+            SchoolNameEditView(
+                schoolLocationManager: schoolLocationManager,
+                currentName: schoolLocationManager.activeSchoolLocation?.name ?? ""
+            )
+        }
+    }
+
+    
     
     private var aboutSection: some View {
         SettingsSection(title: "About", icon: "info.circle.fill") {
             VStack(spacing: 16) {
                 InfoRow(title: "Version", value: "1.0.0", icon: "number.circle.fill")
                 Divider().background(dividerColor)
-                InfoRow(title: "Location Radius", value: "100 meters", icon: "location.circle.fill")
+                InfoRow(title: "Location Radius", value: "500 meters", icon: "location.circle.fill")
                 Divider().background(dividerColor)
-                InfoRow(title: "Developer", value: "School Attendance Team", icon: "person.2.circle.fill")
+                InfoRow(title: "Developer", value: "Derrick 🙂‍↕️", icon: "person.2.circle.fill")
                 Divider().background(dividerColor)
-                InfoRow(title: "Support", value: "Get help", icon: "questionmark.circle.fill")
+                InfoRow(title: "Support", value: "Yeah, NO", icon: "questionmark.circle.fill")
             }
         }
     }
@@ -240,13 +308,17 @@ struct UserProfileSection: View {
     }
     
     private var userDisplayName: String {
-        // TODO: Get actual user name from AuthManager
-        return "Student User"
+        if let firstName = authManager.userFirstName, let lastName = authManager.userLastName {
+            return "\(firstName) \(lastName)"
+        } else if let firstName = authManager.userFirstName {
+            return firstName
+        } else {
+            return "Student User"
+        }
     }
     
     private var userEmail: String {
-        // TODO: Get actual user email from AuthManager
-        return "student@school.edu"
+        return authManager.userEmail ?? "student@school.edu"
     }
     
     private var userRole: String {
