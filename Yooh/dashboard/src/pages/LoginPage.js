@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
+import authService from "../services/authService";
 import { useNavigate } from "react-router-dom";
 import {
   TextField,
@@ -12,15 +13,17 @@ import {
   Paper,
   Alert,
   CircularProgress,
-  Divider,
   IconButton,
   InputAdornment,
+  Dialog,
+  Divider,
 } from "@mui/material";
 import {
   Visibility,
   VisibilityOff,
-  Google as GoogleIcon,
   School as SchoolIcon,
+  CheckCircle as CheckCircleIcon,
+  Google as GoogleIcon,
 } from "@mui/icons-material";
 
 const LoginPage = () => {
@@ -32,8 +35,12 @@ const LoginPage = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [localError, setLocalError] = useState("");
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetSuccess, setResetSuccess] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
 
-  const { user, loading, error, login, register } = useAuth();
+  const { user, loading, error, login, register, resetPassword } = useAuth();
   const navigate = useNavigate();
 
   // Redirect if already authenticated
@@ -53,7 +60,6 @@ const LoginPage = () => {
       } else {
         await register(firstName, lastName, email, password, role);
       }
-      // Navigation will happen automatically via useEffect when user state changes
     } catch (error) {
       console.error(`Failed to ${isLogin ? "login" : "register"}:`, error);
       setLocalError(
@@ -62,11 +68,32 @@ const LoginPage = () => {
     }
   };
 
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    setLocalError("");
+    setResetLoading(true);
+
+    try {
+      const result = await resetPassword(resetEmail);
+      if (result.success) {
+        setResetSuccess(true);
+      } else {
+        setLocalError(result.error || "Failed to send reset email");
+      }
+    } catch (error) {
+      setLocalError(error.message || "Failed to send reset email");
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
   const handleGoogleSignIn = async () => {
     setLocalError("");
     try {
-      // Google Sign-In will be implemented later
-      setLocalError("Google Sign-In not yet implemented for web dashboard");
+      const result = await authService.signInWithGoogle();
+      if (!result.success) {
+        throw new Error(result.error);
+      }
     } catch (error) {
       console.error("Google Sign-In failed:", error);
       setLocalError(error.message || "Google Sign-In failed");
@@ -99,21 +126,20 @@ const LoginPage = () => {
     <Box
       sx={{
         minHeight: "100vh",
-        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        padding: 2,
+        padding: 4,
+        background: "#F2F2F7",
       }}
     >
-      <Container component="main" maxWidth="sm">
+      <Container component="main" maxWidth="xs">
         <Paper
-          elevation={24}
+          elevation={0}
           sx={{
             padding: 4,
             borderRadius: 3,
-            background: "rgba(255, 255, 255, 0.95)",
-            backdropFilter: "blur(10px)",
+            background: "white",
           }}
         >
           <Box
@@ -123,22 +149,18 @@ const LoginPage = () => {
               alignItems: "center",
             }}
           >
-            {/* Logo and Title */}
+            {/* Logo */}
             <Box sx={{ display: "flex", alignItems: "center", mb: 3 }}>
-              <SchoolIcon sx={{ fontSize: 40, color: "primary.main", mr: 1 }} />
+              <SchoolIcon sx={{ fontSize: 32, color: "primary.main", mr: 1 }} />
               <Typography
                 component="h1"
-                variant="h4"
+                variant="h5"
                 fontWeight="bold"
                 color="primary.main"
               >
                 Yooh
               </Typography>
             </Box>
-
-            <Typography variant="h5" color="text.secondary" sx={{ mb: 3 }}>
-              Lecturer Dashboard
-            </Typography>
 
             {/* Tabs */}
             <Tabs
@@ -157,6 +179,7 @@ const LoginPage = () => {
                 {displayError}
               </Alert>
             )}
+
             {/* Form */}
             <Box
               component="form"
@@ -219,7 +242,7 @@ const LoginPage = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 variant="outlined"
-                sx={{ mb: 2 }}
+                sx={{ mb: 1 }}
                 InputProps={{
                   endAdornment: (
                     <InputAdornment position="end">
@@ -234,6 +257,20 @@ const LoginPage = () => {
                   ),
                 }}
               />
+              {isLogin && (
+                <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
+                  <Button
+                    size="small"
+                    onClick={() => {
+                      setShowForgotPassword(true);
+                      setResetEmail(email);
+                    }}
+                    sx={{ textTransform: "none", fontWeight: "bold" }}
+                  >
+                    Forgot Password?
+                  </Button>
+                </Box>
+              )}
 
               {!isLogin && (
                 <TextField
@@ -264,15 +301,9 @@ const LoginPage = () => {
                   mt: 2,
                   mb: 2,
                   py: 1.5,
-                  fontSize: "1.1rem",
-                  fontWeight: "bold",
+                  fontSize: "1rem",
+                  fontWeight: "600",
                   borderRadius: 2,
-                  background:
-                    "linear-gradient(45deg, #667eea 30%, #764ba2 90%)",
-                  "&:hover": {
-                    background:
-                      "linear-gradient(45deg, #5a6fd8 30%, #6a4190 90%)",
-                  },
                 }}
               >
                 {loading ? (
@@ -280,7 +311,7 @@ const LoginPage = () => {
                 ) : isLogin ? (
                   "Sign In"
                 ) : (
-                  "Sign Up"
+                  "Create Account"
                 )}
               </Button>
 
@@ -311,10 +342,140 @@ const LoginPage = () => {
               >
                 Continue with Google
               </Button>
+
+              {/* Footer text */}
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ mt: 3, textAlign: "center" }}
+              >
+                {isLogin
+                  ? "Don't have an account? "
+                  : "Already have an account? "}
+                <Button
+                  onClick={() => setIsLogin(!isLogin)}
+                  sx={{ textTransform: "none", fontWeight: "bold" }}
+                >
+                  {isLogin ? "Sign Up" : "Sign In"}
+                </Button>
+              </Typography>
             </Box>
           </Box>
         </Paper>
       </Container>
+
+      {/* Forgot Password Dialog */}
+      <Dialog
+        open={showForgotPassword}
+        onClose={() => {
+          setShowForgotPassword(false);
+          setResetSuccess(false);
+          setLocalError("");
+        }}
+        maxWidth="sm"
+        fullWidth
+      >
+        <Box
+          sx={{
+            p: 3,
+            background: resetSuccess
+              ? "linear-gradient(135deg, #34C759 0%, #30B350 100%)"
+              : "linear-gradient(135deg, #007AFF 0%, #5856D6 100%)",
+            color: "white",
+            borderRadius: 3,
+            m: 2,
+          }}
+        >
+          <Box sx={{ textAlign: "center", mb: 2 }}>
+            {resetSuccess ? (
+              <CheckCircleIcon sx={{ fontSize: 64, mb: 1 }} />
+            ) : (
+              <SchoolIcon sx={{ fontSize: 64, mb: 1 }} />
+            )}
+            <Typography variant="h5" fontWeight="bold">
+              {resetSuccess ? "Email Sent!" : "Forgot Password?"}
+            </Typography>
+          </Box>
+
+          {resetSuccess ? (
+            <Box sx={{ textAlign: "center" }}>
+              <Typography variant="body1" sx={{ mb: 2 }}>
+                We've sent a password reset link to:
+              </Typography>
+              <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>
+                {resetEmail}
+              </Typography>
+              <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                Please check your email and follow the instructions to reset your
+                password.
+              </Typography>
+            </Box>
+          ) : (
+            <Box component="form" onSubmit={handleResetPassword}>
+              <Typography variant="body1" sx={{ mb: 2 }}>
+                Enter your email address and we'll send you instructions to reset
+                your password.
+              </Typography>
+              <TextField
+                fullWidth
+                label="Email Address"
+                type="email"
+                value={resetEmail}
+                onChange={(e) => setResetEmail(e.target.value)}
+                required
+                sx={{
+                  mb: 2,
+                  "& .MuiOutlinedInput-root": {
+                    backgroundColor: "white",
+                  },
+                }}
+              />
+              {localError && (
+                <Alert severity="error" sx={{ mb: 2 }}>
+                  {localError}
+                </Alert>
+              )}
+              <Box sx={{ display: "flex", gap: 2 }}>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  onClick={() => {
+                    setShowForgotPassword(false);
+                    setResetSuccess(false);
+                    setLocalError("");
+                  }}
+                  disabled={resetLoading}
+                  sx={{
+                    color: "white",
+                    borderColor: "white",
+                    "&:hover": {
+                      borderColor: "white",
+                      backgroundColor: "rgba(255,255,255,0.1)",
+                    },
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  fullWidth
+                  type="submit"
+                  variant="contained"
+                  disabled={resetLoading}
+                  sx={{
+                    backgroundColor: "white",
+                    color: "#007AFF",
+                    "&:hover": {
+                      backgroundColor: "rgba(255,255,255,0.9)",
+                    },
+                  }}
+                >
+                  {resetLoading ? <CircularProgress size={24} /> : "Send Reset Link"}
+                </Button>
+              </Box>
+            </Box>
+          )}
+        </Box>
+      </Dialog>
     </Box>
   );
 };

@@ -282,6 +282,30 @@ class DataService {
     }
   }
 
+  async updateAttendance(recordId, updates) {
+    try {
+      const attendanceRef = doc(db, "attendance", recordId);
+      await updateDoc(attendanceRef, {
+        ...updates,
+        updatedAt: new Date(),
+      });
+      return true;
+    } catch (error) {
+      console.error("Error updating attendance:", error);
+      throw error;
+    }
+  }
+
+  async deleteAttendance(recordId) {
+    try {
+      await deleteDoc(doc(db, "attendance", recordId));
+      return true;
+    } catch (error) {
+      console.error("Error deleting attendance:", error);
+      throw error;
+    }
+  }
+
   // USERS (for admin/lecturer access)
   async getAllUsers() {
     try {

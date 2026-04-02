@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useAuth } from "../context/AuthContext";
 import dataService from "../services/dataService";
 import {
@@ -35,6 +35,16 @@ import {
   Tabs,
   Tab,
   Tooltip,
+  IconButton,
+  InputAdornment,
+  Divider,
+  Badge,
+  Drawer,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  CssBaseline,
 } from "@mui/material";
 import {
   School as SchoolIcon,
@@ -42,8 +52,33 @@ import {
   Assignment as AssignmentIcon,
   EventAvailable as AttendanceIcon,
   Class as ClassIcon,
+  Search as SearchIcon,
+  Download as DownloadIcon,
+  Warning as WarningIcon,
+  TrendingUp as TrendingUpIcon,
+  Delete as DeleteIcon,
+  Edit as EditIcon,
+  Notifications as NotificationsIcon,
+  Menu as MenuIcon,
+  Dashboard as DashboardIcon,
+  ListAlt as ListAltIcon,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  Legend,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  LineChart,
+  Line,
+} from "recharts";
 
 const DashboardPage = () => {
   const { user, userRole, logout } = useAuth();
@@ -58,9 +93,13 @@ const DashboardPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  // Search and filter state
+  const [searchTerm, setSearchTerm] = useState("");
+
   // Dialog states
   const [openClassDialog, setOpenClassDialog] = useState(false);
   const [openAssignmentDialog, setOpenAssignmentDialog] = useState(false);
+  const [openAttendanceDialog, setOpenAttendanceDialog] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
 
   // Class form state
@@ -86,17 +125,19 @@ const DashboardPage = () => {
     selectedStudents: [],
   });
 
+  // Attendance record for editing
+  const [selectedAttendanceRecord, setSelectedAttendanceRecord] = useState(null);
+
+  // Drawer state
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // Real-time setup
   useEffect(() => {
-    console.log(
-      "🔍 Dashboard useEffect - userRole:",
-      userRole,
-      "user:",
-      user?.email
-    );
+    console.log("🔍 Dashboard useEffect - userRole:", userRole, "user:", user?.email);
 
     if (userRole === "lecturer") {
-      console.log("✅ User is lecturer, loading dashboard data...");
-      loadDashboardData();
+      console.log("✅ User is lecturer, setting up real-time listeners...");
+      setupRealTimeListeners();
     } else if (userRole && userRole !== "lecturer") {
       console.log("❌ User is not lecturer, role:", userRole);
       setError(
@@ -110,46 +151,47 @@ const DashboardPage = () => {
       );
       setLoading(false);
     }
+
+    // Cleanup on unmount
+    return () => {
+      dataService.unsubscribeAll();
+    };
   }, [userRole, user]);
 
-  const loadDashboardData = async () => {
+  const setupRealTimeListeners = async () => {
     try {
       setLoading(true);
       setError("");
-      console.log("🔄 Loading dashboard data...");
 
-      // Load all data
-      const [usersData, attendanceData, assignmentsData, classesData] =
-        await Promise.all([
-          dataService.getAllUsers(),
-          dataService.getAllData("attendance", "timestamp"),
-          dataService.getAllData("assignments", "dueDate"),
-          dataService.getAllData("classes", "startDate"),
-        ]);
+      // Load users once (doesn't change often)
+      const usersData = await dataService.getAllUsers();
+      const studentsOnly = usersData.filter((user) => user.role === "student");
+      setStudents(studentsOnly);
 
-      console.log("📊 Data loaded:", {
-        users: usersData.length,
-        attendance: attendanceData.length,
-        assignments: assignmentsData.length,
-        classes: classesData.length,
+      // Set up real-time listeners for dynamic data
+      dataService.subscribeToAttendanceRecords((attendanceData) => {
+        console.log("🔔 Real-time attendance update:", attendanceData.length, "records");
+        setAttendance(attendanceData);
       });
 
-      // Filter students only
-      const studentsOnly = usersData.filter((user) => user.role === "student");
+      dataService.subscribeToAssignments((assignmentsData) => {
+        console.log("🔔 Real-time assignment update:", assignmentsData.length, "records");
+        setAssignments(assignmentsData);
+      });
 
-      setStudents(studentsOnly);
-      setAttendance(attendanceData);
-      setAssignments(assignmentsData);
-      setClasses(classesData);
+      dataService.subscribeToClasses((classesData) => {
+        console.log("🔔 Real-time class update:", classesData.length, "records");
+        setClasses(classesData);
+      });
     } catch (error) {
-      console.error("❌ Error loading dashboard data:", error);
+      console.error("❌ Error setting up listeners:", error);
       setError("Failed to load dashboard data: " + error.message);
     } finally {
       setLoading(false);
     }
   };
 
-  const getStudentStats = React.useCallback(
+  const getStudentStats = useCallback(
     (student) => {
       const studentAttendance = attendance.filter(
         (record) => record.userId === student.id
@@ -159,7 +201,6 @@ const DashboardPage = () => {
         (assignment) => assignment.userId === student.id
       );
 
-      // Total classes should reflect assigned classes, not attendance records
       const totalClasses = studentClasses.length;
       const attendedClasses = studentAttendance.filter(
         (record) => record.status === "present"
@@ -200,10 +241,22 @@ const DashboardPage = () => {
     setOrderBy(property);
   };
 
-  const sortedStudents = React.useMemo(() => {
-    if (!students.length) return [];
+  // Filter students by search term
+  const filteredStudents = useMemo(() => {
+    if (!searchTerm) return students;
+    const search = searchTerm.toLowerCase();
+    return students.filter(
+      (student) =>
+        student.firstName?.toLowerCase().includes(search) ||
+        student.lastName?.toLowerCase().includes(search) ||
+        student.email?.toLowerCase().includes(search)
+    );
+  }, [students, searchTerm]);
 
-    const studentsWithStats = students.map((student) => ({
+  const sortedStudents = useMemo(() => {
+    if (!filteredStudents.length) return [];
+
+    const studentsWithStats = filteredStudents.map((student) => ({
       ...student,
       stats: getStudentStats(student),
     }));
@@ -242,11 +295,42 @@ const DashboardPage = () => {
     };
 
     return studentsWithStats.sort(comparator);
-  }, [students, order, orderBy, getStudentStats]);
+  }, [filteredStudents, order, orderBy, getStudentStats]);
 
   const handleLogout = () => {
     logout();
     navigate("/login");
+  };
+
+  // Export to CSV
+  const exportToCSV = () => {
+    const headers = [
+      "First Name",
+      "Last Name",
+      "Email",
+      "Attendance Rate",
+      "Assignment Rate",
+      "Classes Attended",
+      "Assignments Completed",
+    ];
+    const rows = sortedStudents.map((s) => [
+      s.firstName || "",
+      s.lastName || "",
+      s.email || "",
+      `${s.stats.attendance.rate}%`,
+      `${s.stats.assignments.rate}%`,
+      `${s.stats.attendance.attended}/${s.stats.attendance.total}`,
+      `${s.stats.assignments.completed}/${s.stats.assignments.total}`,
+    ]);
+
+    const csvContent = [headers, ...rows].map((e) => e.join(",")).join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `student-report-${new Date().toISOString().split("T")[0]}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
   };
 
   // Class creation functions
@@ -254,9 +338,7 @@ const DashboardPage = () => {
     try {
       console.log("🔄 Creating class:", classForm);
 
-      // Create class for each selected student
       for (const studentId of classForm.selectedStudents) {
-        // Parse dates and times properly
         const startDateTime = new Date(
           `${classForm.startDate}T${classForm.startTime}`
         );
@@ -272,19 +354,16 @@ const DashboardPage = () => {
           endDate: endDateTime.toISOString(),
           location: classForm.location,
           notes: classForm.description,
-          userId: studentId, // This will be overridden by createClass, so we need a different approach
           createdBy: user.uid,
           isRecurring: true,
         };
 
-        // We need to use a direct Firestore call since createClass sets userId to current user
         await dataService.createClassForStudent(classData, studentId);
       }
 
       console.log("✅ Class created successfully");
       setOpenClassDialog(false);
       resetClassForm();
-      loadDashboardData(); // Refresh data
     } catch (error) {
       console.error("❌ Error creating class:", error);
       setError("Failed to create class: " + error.message);
@@ -295,13 +374,12 @@ const DashboardPage = () => {
     try {
       console.log("🔄 Creating assignment:", assignmentForm);
 
-      // Create assignment for each selected student
       for (const studentId of assignmentForm.selectedStudents) {
         const assignmentData = {
           title: assignmentForm.title,
           details: assignmentForm.description,
           dueDate: `${assignmentForm.dueDate}T${assignmentForm.dueTime}`,
-          priority: assignmentForm.priority, // Use selected priority
+          priority: assignmentForm.priority,
         };
 
         await dataService.createAssignmentForStudent(assignmentData, studentId);
@@ -310,10 +388,33 @@ const DashboardPage = () => {
       console.log("✅ Assignment created successfully");
       setOpenAssignmentDialog(false);
       resetAssignmentForm();
-      loadDashboardData(); // Refresh data
     } catch (error) {
       console.error("❌ Error creating assignment:", error);
       setError("Failed to create assignment: " + error.message);
+    }
+  };
+
+  const handleDeleteAttendance = async (recordId) => {
+    if (window.confirm("Are you sure you want to delete this attendance record?")) {
+      try {
+        await dataService.deleteAttendance(recordId);
+        setOpenAttendanceDialog(false);
+      } catch (error) {
+        console.error("❌ Error deleting attendance:", error);
+        alert("Failed to delete attendance record");
+      }
+    }
+  };
+
+  const handleUpdateAttendance = async () => {
+    try {
+      await dataService.updateAttendance(selectedAttendanceRecord.id, {
+        status: selectedAttendanceRecord.status,
+      });
+      setOpenAttendanceDialog(false);
+    } catch (error) {
+      console.error("❌ Error updating attendance:", error);
+      alert("Failed to update attendance record");
     }
   };
 
@@ -341,6 +442,57 @@ const DashboardPage = () => {
       selectedStudents: [],
     });
   };
+
+  // Get at-risk students
+  const atRiskStudents = useMemo(() => {
+    return sortedStudents.filter((s) => s.stats.attendance.rate < 70);
+  }, [sortedStudents]);
+
+  // Prepare chart data
+  const chartData = useMemo(() => {
+    return sortedStudents.slice(0, 10).map((s) => ({
+      name: `${s.firstName?.charAt(0) || ""}. ${s.lastName || ""}`,
+      attendance: s.stats.attendance.rate,
+      assignments: s.stats.assignments.rate,
+    }));
+  }, [sortedStudents]);
+
+  const attendanceDistributionData = useMemo(() => {
+    const excellent = sortedStudents.filter((s) => s.stats.attendance.rate >= 90).length;
+    const good = sortedStudents.filter(
+      (s) => s.stats.attendance.rate >= 75 && s.stats.attendance.rate < 90
+    ).length;
+    const average = sortedStudents.filter(
+      (s) => s.stats.attendance.rate >= 60 && s.stats.attendance.rate < 75
+    ).length;
+    const atRisk = sortedStudents.filter((s) => s.stats.attendance.rate < 60).length;
+
+    return [
+      { name: "Excellent (90%+)", value: excellent, color: "#4caf50" },
+      { name: "Good (75-89%)", value: good, color: "#8bc34a" },
+      { name: "Average (60-74%)", value: average, color: "#ff9800" },
+      { name: "At Risk (<60%)", value: atRisk, color: "#f44336" },
+    ];
+  }, [sortedStudents]);
+
+  const recentAttendanceData = useMemo(() => {
+    const last7Days = [];
+    const today = new Date();
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(date.getDate() - i);
+      const dateStr = date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+      const dayAttendance = attendance.filter((record) => {
+        const recordDate = record.timestamp?.toDate?.() || new Date(record.timestamp);
+        return (
+          recordDate.toDateString() === date.toDateString() &&
+          record.status === "present"
+        );
+      }).length;
+      last7Days.push({ date: dateStr, count: dayAttendance });
+    }
+    return last7Days;
+  }, [attendance]);
 
   if (loading) {
     return (
@@ -387,9 +539,17 @@ const DashboardPage = () => {
       {/* App Bar */}
       <AppBar
         position="static"
-        sx={{ background: "linear-gradient(45deg, #667eea 30%, #764ba2 90%)" }}
+        sx={{ background: "linear-gradient(45deg, #007AFF 30%, #5856D6 90%)" }}
       >
         <Toolbar>
+          <IconButton
+            edge="start"
+            color="inherit"
+            onClick={() => setDrawerOpen(!drawerOpen)}
+            sx={{ mr: 2 }}
+          >
+            <MenuIcon />
+          </IconButton>
           <SchoolIcon sx={{ mr: 2 }} />
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
             Yooh - Lecturer Dashboard
@@ -403,7 +563,73 @@ const DashboardPage = () => {
         </Toolbar>
       </AppBar>
 
+      {/* Drawer Navigation */}
+      <Drawer open={drawerOpen} onClose={() => setDrawerOpen(false)}>
+        <Box sx={{ width: 250 }}>
+          <Box sx={{ p: 2, background: "linear-gradient(45deg, #007AFF 30%, #5856D6 90%)" }}>
+            <Typography variant="h6" color="white">
+              Yooh Dashboard
+            </Typography>
+          </Box>
+          <List>
+            <ListItem
+              button
+              onClick={() => {
+                navigate("/dashboard");
+                setDrawerOpen(false);
+              }}
+            >
+              <ListItemIcon>
+                <DashboardIcon />
+              </ListItemIcon>
+              <ListItemText primary="Dashboard" />
+            </ListItem>
+            <ListItem
+              button
+              onClick={() => {
+                navigate("/attendance");
+                setDrawerOpen(false);
+              }}
+            >
+              <ListItemIcon>
+                <ListAltIcon />
+              </ListItemIcon>
+              <ListItemText primary="Attendance Records" />
+            </ListItem>
+            <ListItem
+              button
+              onClick={() => {
+                navigate("/notifications");
+                setDrawerOpen(false);
+              }}
+            >
+              <ListItemIcon>
+                <NotificationsIcon />
+              </ListItemIcon>
+              <ListItemText primary="Notifications" />
+            </ListItem>
+          </List>
+        </Box>
+      </Drawer>
+
       <Container sx={{ mt: 4, mb: 4 }}>
+        {/* At-Risk Alert */}
+        {atRiskStudents.length > 0 && (
+          <Alert
+            severity="warning"
+            sx={{ mb: 3 }}
+            icon={<WarningIcon fontSize="inherit" />}
+          >
+            <Typography variant="subtitle1" fontWeight="bold">
+              ⚠️ {atRiskStudents.length} Student(s) at Risk
+            </Typography>
+            <Typography variant="body2">
+              {atRiskStudents.slice(0, 5).map((s) => `${s.firstName} ${s.lastName}`).join(", ")}
+              {atRiskStudents.length > 5 && ` +${atRiskStudents.length - 5} more`}
+            </Typography>
+          </Alert>
+        )}
+
         {/* Stats Cards */}
         <Grid container spacing={3} sx={{ mb: 4 }}>
           <Grid item xs={12} sm={6} md={3}>
@@ -516,6 +742,104 @@ const DashboardPage = () => {
           </Grid>
         </Grid>
 
+        {/* Analytics Charts */}
+        <Grid container spacing={3} sx={{ mb: 4 }}>
+          <Grid item xs={12} md={6}>
+            <Paper sx={{ p: 3 }}>
+              <Typography variant="h6" gutterBottom>
+                <TrendingUpIcon sx={{ mr: 1, verticalAlign: "middle" }} />
+                Student Performance Comparison
+              </Typography>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <RechartsTooltip />
+                  <Legend />
+                  <Bar dataKey="attendance" fill="#1976d2" name="Attendance %" />
+                  <Bar dataKey="assignments" fill="#2e7d32" name="Assignment %" />
+                </BarChart>
+              </ResponsiveContainer>
+            </Paper>
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <Paper sx={{ p: 3 }}>
+              <Typography variant="h6" gutterBottom>
+                Attendance Distribution
+              </Typography>
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={attendanceDistributionData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {attendanceDistributionData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <RechartsTooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </Paper>
+          </Grid>
+          <Grid item xs={12}>
+            <Paper sx={{ p: 3 }}>
+              <Typography variant="h6" gutterBottom>
+                Attendance Trend (Last 7 Days)
+              </Typography>
+              <ResponsiveContainer width="100%" height={250}>
+                <LineChart data={recentAttendanceData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" />
+                  <YAxis />
+                  <RechartsTooltip />
+                  <Legend />
+                  <Line
+                    type="monotone"
+                    dataKey="count"
+                    stroke="#007AFF"
+                    strokeWidth={2}
+                    name="Daily Check-ins"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </Paper>
+          </Grid>
+        </Grid>
+
+        {/* Search and Export Bar */}
+        <Box sx={{ display: "flex", gap: 2, mb: 3, flexWrap: "wrap" }}>
+          <TextField
+            fullWidth
+            placeholder="Search by name or email..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            sx={{ maxWidth: 400 }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon />
+                </InputAdornment>
+              ),
+            }}
+          />
+          <Button
+            variant="outlined"
+            startIcon={<DownloadIcon />}
+            onClick={exportToCSV}
+            disabled={sortedStudents.length === 0}
+          >
+            Export to CSV
+          </Button>
+        </Box>
+
         {/* Students Table */}
         <Paper sx={{ width: "100%", overflow: "hidden" }}>
           <Box sx={{ p: 2 }}>
@@ -577,7 +901,9 @@ const DashboardPage = () => {
                   <TableRow>
                     <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
                       <Typography variant="body1" color="text.secondary">
-                        No student data available yet
+                        {searchTerm
+                          ? "No students match your search"
+                          : "No student data available yet"}
                       </Typography>
                     </TableCell>
                   </TableRow>
@@ -765,7 +1091,10 @@ const DashboardPage = () => {
                       type="time"
                       value={classForm.endTime}
                       onChange={(e) =>
-                        setClassForm({ ...classForm, endTime: e.target.value })
+                        setClassForm({
+                          ...classForm,
+                          endTime: e.target.value,
+                        })
                       }
                       InputLabelProps={{ shrink: true }}
                     />
@@ -792,7 +1121,10 @@ const DashboardPage = () => {
                       type="date"
                       value={classForm.endDate}
                       onChange={(e) =>
-                        setClassForm({ ...classForm, endDate: e.target.value })
+                        setClassForm({
+                          ...classForm,
+                          endDate: e.target.value,
+                        })
                       }
                       InputLabelProps={{ shrink: true }}
                     />
@@ -803,7 +1135,10 @@ const DashboardPage = () => {
                       label="Location"
                       value={classForm.location}
                       onChange={(e) =>
-                        setClassForm({ ...classForm, location: e.target.value })
+                        setClassForm({
+                          ...classForm,
+                          location: e.target.value,
+                        })
                       }
                     />
                   </Grid>
@@ -811,79 +1146,40 @@ const DashboardPage = () => {
               )}
               {activeTab === 2 && (
                 <Grid item xs={12}>
-                  <FormControl fullWidth variant="outlined">
-                    <InputLabel id="class-assign-students-label">
-                      Assign to Students
+                  <FormControl fullWidth>
+                    <InputLabel id="select-students-label">
+                      Select Students
                     </InputLabel>
                     <Select
-                      labelId="class-assign-students-label"
-                      id="class-assign-students"
-                      label="Assign to Students"
+                      labelId="select-students-label"
+                      id="select-students"
+                      label="Select Students"
                       multiple
                       value={classForm.selectedStudents}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        const isSelectAll =
-                          value[value.length - 1] === "__all__";
-                        if (isSelectAll) {
-                          const allIds = students.map((s) => s.id);
-                          const allSelected =
-                            classForm.selectedStudents.length === allIds.length;
-                          setClassForm({
-                            ...classForm,
-                            selectedStudents: allSelected ? [] : allIds,
-                          });
-                        } else {
-                          setClassForm({
-                            ...classForm,
-                            selectedStudents: value,
-                          });
-                        }
-                      }}
+                      onChange={(e) =>
+                        setClassForm({
+                          ...classForm,
+                          selectedStudents: e.target.value,
+                        })
+                      }
+                      renderValue={(selected) =>
+                        selected
+                          .map(
+                            (id) =>
+                              students.find((s) => s.id === id)?.email || id
+                          )
+                          .join(", ")
+                      }
                     >
-                      <MenuItem value="__all__">Select All</MenuItem>
                       {students.map((student) => (
                         <MenuItem key={student.id} value={student.id}>
-                          {student.firstName} {student.lastName} (
-                          {student.email})
+                          {student.firstName} {student.lastName} ({student.email})
                         </MenuItem>
                       ))}
                     </Select>
                   </FormControl>
                 </Grid>
               )}
-              <Grid item xs={12}>
-                <Card variant="outlined">
-                  <CardContent>
-                    <Typography
-                      variant="subtitle2"
-                      color="text.secondary"
-                      gutterBottom
-                    >
-                      Live Preview
-                    </Typography>
-                    <Typography variant="h6">
-                      {classForm.name || "Untitled Class"}
-                    </Typography>
-                    <Typography
-                      variant="body2"
-                      color="text.secondary"
-                      sx={{ mb: 1 }}
-                    >
-                      {classForm.description || "No description yet"}
-                    </Typography>
-                    <Chip
-                      size="small"
-                      label={classForm.dayOfWeek || "Day not set"}
-                      sx={{ mr: 1 }}
-                    />
-                    <Chip
-                      size="small"
-                      label={classForm.location || "Location TBD"}
-                    />
-                  </CardContent>
-                </Card>
-              </Grid>
             </Grid>
           </Box>
         </DialogContent>
@@ -894,8 +1190,8 @@ const DashboardPage = () => {
             variant="contained"
             disabled={
               !classForm.name ||
-              !classForm.dayOfWeek ||
-              classForm.selectedStudents.length === 0
+              !classForm.selectedStudents.length ||
+              !classForm.startDate
             }
           >
             Create Class
@@ -916,187 +1212,116 @@ const DashboardPage = () => {
             Create New Assignment
           </Box>
         </DialogTitle>
-        <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)} centered>
-          <Tab label="Basics" />
-          <Tab label="Due" />
-          <Tab label="Students" />
-        </Tabs>
         <DialogContent>
           <Box sx={{ mt: 2 }}>
             <Grid container spacing={2}>
-              {activeTab === 0 && (
-                <>
-                  <Grid item xs={12}>
-                    <TextField
-                      fullWidth
-                      label="Assignment Title"
-                      value={assignmentForm.title}
-                      onChange={(e) =>
-                        setAssignmentForm({
-                          ...assignmentForm,
-                          title: e.target.value,
-                        })
-                      }
-                    />
-                  </Grid>
-                  <Grid item xs={12}>
-                    <TextField
-                      fullWidth
-                      label="Description"
-                      multiline
-                      rows={3}
-                      value={assignmentForm.description}
-                      onChange={(e) =>
-                        setAssignmentForm({
-                          ...assignmentForm,
-                          description: e.target.value,
-                        })
-                      }
-                    />
-                  </Grid>
-                </>
-              )}
-              {activeTab === 1 && (
-                <>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      fullWidth
-                      label="Due Date"
-                      type="date"
-                      value={assignmentForm.dueDate}
-                      onChange={(e) =>
-                        setAssignmentForm({
-                          ...assignmentForm,
-                          dueDate: e.target.value,
-                        })
-                      }
-                      InputLabelProps={{ shrink: true }}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      fullWidth
-                      label="Due Time"
-                      type="time"
-                      value={assignmentForm.dueTime}
-                      onChange={(e) =>
-                        setAssignmentForm({
-                          ...assignmentForm,
-                          dueTime: e.target.value,
-                        })
-                      }
-                      InputLabelProps={{ shrink: true }}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <FormControl fullWidth variant="outlined">
-                      <InputLabel id="assignment-priority-label">
-                        Priority
-                      </InputLabel>
-                      <Select
-                        labelId="assignment-priority-label"
-                        id="assignment-priority"
-                        label="Priority"
-                        value={assignmentForm.priority}
-                        onChange={(e) =>
-                          setAssignmentForm({
-                            ...assignmentForm,
-                            priority: e.target.value,
-                          })
-                        }
-                      >
-                        <MenuItem value="Low">Low</MenuItem>
-                        <MenuItem value="Medium">Medium</MenuItem>
-                        <MenuItem value="High">High</MenuItem>
-                      </Select>
-                    </FormControl>
-                  </Grid>
-                </>
-              )}
-              {activeTab === 2 && (
-                <Grid item xs={12}>
-                  <FormControl fullWidth variant="outlined">
-                    <InputLabel id="assignment-assign-students-label">
-                      Assign to Students
-                    </InputLabel>
-                    <Select
-                      labelId="assignment-assign-students-label"
-                      id="assignment-assign-students"
-                      label="Assign to Students"
-                      multiple
-                      value={assignmentForm.selectedStudents}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        const isSelectAll =
-                          value[value.length - 1] === "__all__";
-                        if (isSelectAll) {
-                          const allIds = students.map((s) => s.id);
-                          const allSelected =
-                            assignmentForm.selectedStudents.length ===
-                            allIds.length;
-                          setAssignmentForm({
-                            ...assignmentForm,
-                            selectedStudents: allSelected ? [] : allIds,
-                          });
-                        } else {
-                          setAssignmentForm({
-                            ...assignmentForm,
-                            selectedStudents: value,
-                          });
-                        }
-                      }}
-                    >
-                      <MenuItem value="__all__">Select All</MenuItem>
-                      {students.map((student) => (
-                        <MenuItem key={student.id} value={student.id}>
-                          {student.firstName} {student.lastName} (
-                          {student.email})
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-              )}
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Assignment Title"
+                  value={assignmentForm.title}
+                  onChange={(e) =>
+                    setAssignmentForm({ ...assignmentForm, title: e.target.value })
+                  }
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <FormControl fullWidth>
+                  <InputLabel id="priority-label">Priority</InputLabel>
+                  <Select
+                    labelId="priority-label"
+                    label="Priority"
+                    value={assignmentForm.priority}
+                    onChange={(e) =>
+                      setAssignmentForm({
+                        ...assignmentForm,
+                        priority: e.target.value,
+                      })
+                    }
+                  >
+                    <MenuItem value="Low">Low</MenuItem>
+                    <MenuItem value="Medium">Medium</MenuItem>
+                    <MenuItem value="High">High</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
               <Grid item xs={12}>
-                <Card variant="outlined">
-                  <CardContent>
-                    <Typography
-                      variant="subtitle2"
-                      color="text.secondary"
-                      gutterBottom
-                    >
-                      Live Preview
-                    </Typography>
-                    <Typography variant="h6">
-                      {assignmentForm.title || "Untitled Assignment"}
-                    </Typography>
-                    <Typography
-                      variant="body2"
-                      color="text.secondary"
-                      sx={{ mb: 1 }}
-                    >
-                      {assignmentForm.description || "No description yet"}
-                    </Typography>
-                    <Chip
-                      size="small"
-                      color="default"
-                      label={`Priority: ${assignmentForm.priority}`}
-                      sx={{ mr: 1 }}
-                    />
-                    <Chip
-                      size="small"
-                      label={
-                        assignmentForm.dueDate
-                          ? `Due ${assignmentForm.dueDate}${
-                              assignmentForm.dueTime
-                                ? " " + assignmentForm.dueTime
-                                : ""
-                            }`
-                          : "No due date set"
-                      }
-                    />
-                  </CardContent>
-                </Card>
+                <TextField
+                  fullWidth
+                  label="Description"
+                  multiline
+                  rows={3}
+                  value={assignmentForm.description}
+                  onChange={(e) =>
+                    setAssignmentForm({
+                      ...assignmentForm,
+                      description: e.target.value,
+                    })
+                  }
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Due Date"
+                  type="date"
+                  value={assignmentForm.dueDate}
+                  onChange={(e) =>
+                    setAssignmentForm({
+                      ...assignmentForm,
+                      dueDate: e.target.value,
+                    })
+                  }
+                  InputLabelProps={{ shrink: true }}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Due Time"
+                  type="time"
+                  value={assignmentForm.dueTime}
+                  onChange={(e) =>
+                    setAssignmentForm({
+                      ...assignmentForm,
+                      dueTime: e.target.value,
+                    })
+                  }
+                  InputLabelProps={{ shrink: true }}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <FormControl fullWidth>
+                  <InputLabel id="select-students-assign-label">
+                    Select Students
+                  </InputLabel>
+                  <Select
+                    labelId="select-students-assign-label"
+                    label="Select Students"
+                    multiple
+                    value={assignmentForm.selectedStudents}
+                    onChange={(e) =>
+                      setAssignmentForm({
+                        ...assignmentForm,
+                        selectedStudents: e.target.value,
+                      })
+                    }
+                    renderValue={(selected) =>
+                      selected
+                        .map(
+                          (id) =>
+                            students.find((s) => s.id === id)?.email || id
+                        )
+                        .join(", ")
+                    }
+                  >
+                    {students.map((student) => (
+                      <MenuItem key={student.id} value={student.id}>
+                        {student.firstName} {student.lastName} ({student.email})
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
               </Grid>
             </Grid>
           </Box>
@@ -1106,15 +1331,98 @@ const DashboardPage = () => {
           <Button
             onClick={handleCreateAssignment}
             variant="contained"
+            color="secondary"
             disabled={
               !assignmentForm.title ||
-              !assignmentForm.dueDate ||
-              assignmentForm.selectedStudents.length === 0
+              !assignmentForm.selectedStudents.length ||
+              !assignmentForm.dueDate
             }
           >
             Create Assignment
           </Button>
         </DialogActions>
+      </Dialog>
+
+      {/* Attendance Records Dialog */}
+      <Dialog
+        open={openAttendanceDialog}
+        onClose={() => setOpenAttendanceDialog(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        {selectedAttendanceRecord && (
+          <>
+            <DialogTitle>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <AttendanceIcon color="success" />
+                Attendance Record Details
+              </Box>
+            </DialogTitle>
+            <DialogContent>
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="body1">
+                  <strong>Student:</strong>{" "}
+                  {students.find((s) => s.id === selectedAttendanceRecord.userId)
+                    ?.email || "Unknown"}
+                </Typography>
+                <Typography variant="body1">
+                  <strong>Date:</strong>{" "}
+                  {new Date(
+                    selectedAttendanceRecord.timestamp?.toDate?.() ||
+                      selectedAttendanceRecord.timestamp
+                  ).toLocaleString()}
+                </Typography>
+                <Typography variant="body1">
+                  <strong>Status:</strong>{" "}
+                  <Chip
+                    label={selectedAttendanceRecord.status}
+                    color={
+                      selectedAttendanceRecord.status === "present"
+                        ? "success"
+                        : "error"
+                    }
+                    size="small"
+                  />
+                </Typography>
+                <Typography variant="body1">
+                  <strong>Location:</strong>{" "}
+                  {selectedAttendanceRecord.location || "N/A"}
+                </Typography>
+                <FormControl fullWidth sx={{ mt: 2 }}>
+                  <InputLabel>Status</InputLabel>
+                  <Select
+                    value={selectedAttendanceRecord.status}
+                    label="Status"
+                    onChange={(e) =>
+                      setSelectedAttendanceRecord({
+                        ...selectedAttendanceRecord,
+                        status: e.target.value,
+                      })
+                    }
+                  >
+                    <MenuItem value="present">Present</MenuItem>
+                    <MenuItem value="absent">Absent</MenuItem>
+                  </Select>
+                </FormControl>
+              </Box>
+            </DialogContent>
+            <DialogActions>
+              <Button
+                onClick={() => handleDeleteAttendance(selectedAttendanceRecord.id)}
+                color="error"
+                startIcon={<DeleteIcon />}
+              >
+                Delete
+              </Button>
+              <Button onClick={() => setOpenAttendanceDialog(false)}>
+                Close
+              </Button>
+              <Button onClick={handleUpdateAttendance} variant="contained">
+                Update
+              </Button>
+            </DialogActions>
+          </>
+        )}
       </Dialog>
     </Box>
   );

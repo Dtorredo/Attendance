@@ -73,6 +73,20 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const resetPassword = async (email) => {
+    setError(null);
+    try {
+      const result = await authService.resetPassword(email);
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+      return { success: true };
+    } catch (error) {
+      console.error("❌ Password reset error:", error);
+      return { success: false, error: error.message };
+    }
+  };
+
   useEffect(() => {
     console.log("🔄 Initializing auth service...");
     const initAuth = async () => {
@@ -105,7 +119,7 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider
-      value={{ user, userRole, loading, error, login, register, logout }}
+      value={{ user, userRole, loading, error, login, register, logout, resetPassword }}
     >
       {children}
     </AuthContext.Provider>

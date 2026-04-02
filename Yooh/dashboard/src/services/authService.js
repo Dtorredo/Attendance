@@ -1,10 +1,11 @@
-import { 
-  signInWithEmailAndPassword, 
+import {
+  signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
   GoogleAuthProvider,
-  signInWithPopup
+  signInWithPopup,
+  sendPasswordResetEmail
 } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from './firebase';
@@ -173,6 +174,16 @@ class AuthService {
   // Check if user is student
   isStudent() {
     return this.userRole === 'student';
+  }
+
+  // Reset password
+  async resetPassword(email) {
+    try {
+      await sendPasswordResetEmail(auth, email);
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
   }
 }
 
