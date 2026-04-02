@@ -9,44 +9,34 @@ import PrivateRoute from './hocs/PrivateRoute';
 import Layout from './hocs/Layout';
 import { CssBaseline, ThemeProvider, createTheme } from '@mui/material';
 
-// iOS Blue color scheme to match the iOS app
+// Professional Blue and White color scheme
 const theme = createTheme({
   palette: {
     primary: {
-      main: '#007AFF', // iOS System Blue
-    },
-    secondary: {
-      main: '#5856D6', // iOS System Purple
-    },
-    success: {
-      main: '#34C759', // iOS System Green
-    },
-    error: {
-      main: '#FF3B30', // iOS System Red
-    },
-    warning: {
-      main: '#FF9500', // iOS System Orange
-    },
-    info: {
-      main: '#5AC8FA', // iOS System Mint
+      main: '#007AFF', // Professional Blue
     },
     background: {
-      default: '#F2F2F7', // iOS System Gray 6
+      default: '#FFFFFF', // Clean White
+      paper: '#FFFFFF',
+    },
+    text: {
+      primary: '#000000', // Solid Black
+      secondary: '#48484A', // Dark Gray for secondary
     },
   },
   typography: {
-    fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
     h4: {
-      fontWeight: 600,
-      fontSize: '1.75rem',
+      fontWeight: 700,
+      color: '#000000',
     },
     h5: {
-      fontWeight: 600,
-      fontSize: '1.5rem',
+      fontWeight: 700,
+      color: '#000000',
     },
     h6: {
-      fontWeight: 600,
-      fontSize: '1.25rem',
+      fontWeight: 700,
+      color: '#000000',
     },
     button: {
       textTransform: 'none',
@@ -54,17 +44,13 @@ const theme = createTheme({
     },
   },
   shape: {
-    borderRadius: 12,
+    borderRadius: 8,
   },
   components: {
     MuiButton: {
       styleOverrides: {
         root: {
-          borderRadius: 12,
-          padding: '12px 24px',
-          fontWeight: 600,
-        },
-        contained: {
+          borderRadius: 6,
           boxShadow: 'none',
           '&:hover': {
             boxShadow: 'none',
@@ -72,25 +58,19 @@ const theme = createTheme({
         },
       },
     },
+    MuiAppBar: {
+      styleOverrides: {
+        root: {
+          backgroundColor: '#007AFF',
+          boxShadow: 'none',
+        },
+      },
+    },
     MuiCard: {
       styleOverrides: {
         root: {
-          borderRadius: 16,
-          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
-        },
-      },
-    },
-    MuiPaper: {
-      styleOverrides: {
-        root: {
-          borderRadius: 16,
-        },
-      },
-    },
-    MuiChip: {
-      styleOverrides: {
-        root: {
-          fontWeight: 600,
+          border: '1px solid #E5E5EA',
+          boxShadow: 'none',
         },
       },
     },

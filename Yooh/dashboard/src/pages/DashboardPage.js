@@ -453,10 +453,10 @@ const DashboardPage = () => {
     const atRisk = sortedStudents.filter((s) => s.stats.attendance.rate < 60).length;
 
     return [
-      { name: "Excellent (90%+)", value: excellent, color: "#4caf50" },
-      { name: "Good (75-89%)", value: good, color: "#8bc34a" },
-      { name: "Average (60-74%)", value: average, color: "#ff9800" },
-      { name: "At Risk (<60%)", value: atRisk, color: "#f44336" },
+      { name: "Excellent (90%+)", value: excellent, color: "#007AFF" },
+      { name: "Good (75-89%)", value: good, color: "#5AC8FA" },
+      { name: "Average (60-74%)", value: average, color: "#D1D1D6" },
+      { name: "At Risk (<60%)", value: atRisk, color: "#8E8E93" },
     ];
   }, [sortedStudents]);
 
@@ -525,16 +525,22 @@ const DashboardPage = () => {
         {/* At-Risk Alert */}
         {atRiskStudents.length > 0 && (
           <Alert
-            severity="warning"
-            sx={{ mb: 3 }}
-            icon={<WarningIcon fontSize="inherit" />}
+            severity="info"
+            sx={{ 
+              mb: 3, 
+              backgroundColor: '#F2F2F7', 
+              color: '#007AFF',
+              border: '1px solid #007AFF',
+              '& .MuiAlert-icon': { color: '#007AFF' }
+            }}
+            icon={<TrendingUpIcon fontSize="inherit" />}
           >
-            <Typography variant="subtitle1" fontWeight="bold">
-              ⚠️ {atRiskStudents.length} Student(s) at Risk
+            <Typography variant="subtitle2" fontWeight="bold">
+              Institutional Insight: {atRiskStudents.length} student(s) have attendance below 70%
             </Typography>
-            <Typography variant="body2">
-              {atRiskStudents.slice(0, 5).map((s) => `${s.firstName} ${s.lastName}`).join(", ")}
-              {atRiskStudents.length > 5 && ` +${atRiskStudents.length - 5} more`}
+            <Typography variant="caption">
+              {atRiskStudents.slice(0, 8).map((s) => `${s.firstName} ${s.lastName}`).join(", ")}
+              {atRiskStudents.length > 8 && ` +${atRiskStudents.length - 8} others`}
             </Typography>
           </Alert>
         )}
@@ -545,22 +551,21 @@ const DashboardPage = () => {
             <Card
               sx={{
                 flexGrow: 1,
-                borderRadius: 2,
-                border: "1px solid",
-                borderColor: "divider",
-                background: "linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)",
+                borderRadius: 1,
+                border: "1px solid #E5E5EA",
+                backgroundColor: "#FFFFFF",
                 transition: "all .2s ease",
-                boxShadow: 1,
-                "&:hover": { transform: "translateY(-3px)", boxShadow: 8 },
+                boxShadow: "none",
+                "&:hover": { borderColor: "#007AFF" },
               }}
             >
               <CardContent sx={{ height: '100%', display: 'flex', alignItems: 'center' }}>
                 <Box sx={{ display: "flex", alignItems: "center", width: '100%' }}>
                   <PeopleIcon
-                    sx={{ fontSize: 40, color: "primary.main", mr: 2 }}
+                    sx={{ fontSize: 32, color: "#007AFF", mr: 2 }}
                   />
                   <Box>
-                    <Typography color="textSecondary" variant="body2" gutterBottom>
+                    <Typography color="textSecondary" variant="caption" sx={{ textTransform: 'uppercase', fontWeight: 600, letterSpacing: 1 }}>
                       Total Students
                     </Typography>
                     <Typography variant="h4" fontWeight="bold">{students.length}</Typography>
@@ -573,22 +578,21 @@ const DashboardPage = () => {
             <Card
               sx={{
                 flexGrow: 1,
-                borderRadius: 2,
-                border: "1px solid",
-                borderColor: "divider",
-                background: "linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)",
+                borderRadius: 1,
+                border: "1px solid #E5E5EA",
+                backgroundColor: "#FFFFFF",
                 transition: "all .2s ease",
-                boxShadow: 1,
-                "&:hover": { transform: "translateY(-3px)", boxShadow: 8 },
+                boxShadow: "none",
+                "&:hover": { borderColor: "#007AFF" },
               }}
             >
               <CardContent sx={{ height: '100%', display: 'flex', alignItems: 'center' }}>
                 <Box sx={{ display: "flex", alignItems: "center", width: '100%' }}>
                   <AttendanceIcon
-                    sx={{ fontSize: 40, color: "success.main", mr: 2 }}
+                    sx={{ fontSize: 32, color: "#007AFF", mr: 2 }}
                   />
                   <Box>
-                    <Typography color="textSecondary" variant="body2" gutterBottom>
+                    <Typography color="textSecondary" variant="caption" sx={{ textTransform: 'uppercase', fontWeight: 600, letterSpacing: 1 }}>
                       Attendance Records
                     </Typography>
                     <Typography variant="h4" fontWeight="bold">{attendance.length}</Typography>
@@ -601,22 +605,21 @@ const DashboardPage = () => {
             <Card
               sx={{
                 flexGrow: 1,
-                borderRadius: 2,
-                border: "1px solid",
-                borderColor: "divider",
-                background: "linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)",
+                borderRadius: 1,
+                border: "1px solid #E5E5EA",
+                backgroundColor: "#FFFFFF",
                 transition: "all .2s ease",
-                boxShadow: 1,
-                "&:hover": { transform: "translateY(-3px)", boxShadow: 8 },
+                boxShadow: "none",
+                "&:hover": { borderColor: "#007AFF" },
               }}
             >
               <CardContent sx={{ height: '100%', display: 'flex', alignItems: 'center' }}>
                 <Box sx={{ display: "flex", alignItems: "center", width: '100%' }}>
                   <AssignmentIcon
-                    sx={{ fontSize: 40, color: "warning.main", mr: 2 }}
+                    sx={{ fontSize: 32, color: "#007AFF", mr: 2 }}
                   />
                   <Box>
-                    <Typography color="textSecondary" variant="body2" gutterBottom>
+                    <Typography color="textSecondary" variant="caption" sx={{ textTransform: 'uppercase', fontWeight: 600, letterSpacing: 1 }}>
                       Total Assignments
                     </Typography>
                     <Typography variant="h4" fontWeight="bold">{assignments.length}</Typography>
@@ -629,22 +632,21 @@ const DashboardPage = () => {
             <Card
               sx={{
                 flexGrow: 1,
-                borderRadius: 2,
-                border: "1px solid",
-                borderColor: "divider",
-                background: "linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)",
+                borderRadius: 1,
+                border: "1px solid #E5E5EA",
+                backgroundColor: "#FFFFFF",
                 transition: "all .2s ease",
-                boxShadow: 1,
-                "&:hover": { transform: "translateY(-3px)", boxShadow: 8 },
+                boxShadow: "none",
+                "&:hover": { borderColor: "#007AFF" },
               }}
             >
               <CardContent sx={{ height: '100%', display: 'flex', alignItems: 'center' }}>
                 <Box sx={{ display: "flex", alignItems: "center", width: '100%' }}>
                   <SchoolIcon
-                    sx={{ fontSize: 40, color: "info.main", mr: 2 }}
+                    sx={{ fontSize: 32, color: "#007AFF", mr: 2 }}
                   />
                   <Box>
-                    <Typography color="textSecondary" variant="body2" gutterBottom>
+                    <Typography color="textSecondary" variant="caption" sx={{ textTransform: 'uppercase', fontWeight: 600, letterSpacing: 1 }}>
                       Total Classes
                     </Typography>
                     <Typography variant="h4" fontWeight="bold">{classes.length}</Typography>
@@ -840,27 +842,25 @@ const DashboardPage = () => {
                       <TableCell align="center">
                         <Chip
                           label={`${student.stats.attendance.rate}%`}
-                          color={
-                            student.stats.attendance.rate >= 80
-                              ? "success"
-                              : student.stats.attendance.rate >= 70
-                              ? "warning"
-                              : "error"
-                          }
-                          variant="outlined"
+                          sx={{
+                            backgroundColor: student.stats.attendance.rate >= 80 ? '#007AFF' : '#F2F2F7',
+                            color: student.stats.attendance.rate >= 80 ? '#FFFFFF' : '#000000',
+                            fontWeight: 700,
+                            borderRadius: 1
+                          }}
+                          size="small"
                         />
                       </TableCell>
                       <TableCell align="center">
                         <Chip
                           label={`${student.stats.assignments.rate}%`}
-                          color={
-                            student.stats.assignments.rate >= 80
-                              ? "success"
-                              : student.stats.assignments.rate >= 70
-                              ? "warning"
-                              : "error"
-                          }
-                          variant="outlined"
+                          sx={{
+                            backgroundColor: student.stats.assignments.rate >= 80 ? '#007AFF' : '#F2F2F7',
+                            color: student.stats.assignments.rate >= 80 ? '#FFFFFF' : '#000000',
+                            fontWeight: 700,
+                            borderRadius: 1
+                          }}
+                          size="small"
                         />
                       </TableCell>
                       <TableCell align="center">

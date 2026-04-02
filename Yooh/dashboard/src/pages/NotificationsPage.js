@@ -248,30 +248,32 @@ const NotificationsPage = () => {
         <Grid item xs={12} sm={4}>
           <Card
             sx={{
-              background: "linear-gradient(180deg, #ffffff 0%, #e3f2fd 100%)",
-              boxShadow: 1,
+              backgroundColor: "#FFFFFF",
+              border: '1px solid #E5E5EA',
+              boxShadow: 'none',
             }}
           >
             <CardContent>
-              <Typography color="textSecondary" gutterBottom>
+              <Typography color="textSecondary" variant="caption" sx={{ fontWeight: 600, textTransform: 'uppercase' }}>
                 Total Sent
               </Typography>
-              <Typography variant="h4">{stats.total}</Typography>
+              <Typography variant="h4" fontWeight="bold">{stats.total}</Typography>
             </CardContent>
           </Card>
         </Grid>
         <Grid item xs={12} sm={4}>
           <Card
             sx={{
-              background: "linear-gradient(180deg, #ffffff 0%, #e8f5e9 100%)",
-              boxShadow: 1,
+              backgroundColor: "#FFFFFF",
+              border: '1px solid #E5E5EA',
+              boxShadow: 'none',
             }}
           >
             <CardContent>
-              <Typography color="textSecondary" gutterBottom>
+              <Typography color="textSecondary" variant="caption" sx={{ fontWeight: 600, textTransform: 'uppercase' }}>
                 Sent Today
               </Typography>
-              <Typography variant="h4" color="success.main">
+              <Typography variant="h4" fontWeight="bold" color="primary.main">
                 {stats.sentToday}
               </Typography>
             </CardContent>
@@ -280,15 +282,16 @@ const NotificationsPage = () => {
         <Grid item xs={12} sm={4}>
           <Card
             sx={{
-              background: "linear-gradient(180deg, #ffffff 0%, #ffebee 100%)",
-              boxShadow: 1,
+              backgroundColor: "#FFFFFF",
+              border: '1px solid #E5E5EA',
+              boxShadow: 'none',
             }}
           >
             <CardContent>
-              <Typography color="textSecondary" gutterBottom>
+              <Typography color="textSecondary" variant="caption" sx={{ fontWeight: 600, textTransform: 'uppercase' }}>
                 Urgent Alerts
               </Typography>
-              <Typography variant="h4" color="error.main">
+              <Typography variant="h4" fontWeight="bold" sx={{ color: '#8E8E93' }}>
                 {stats.urgent}
               </Typography>
             </CardContent>
@@ -304,7 +307,8 @@ const NotificationsPage = () => {
           startIcon={<SendIcon />}
           onClick={() => setOpenSendDialog(true)}
           sx={{
-            background: "linear-gradient(45deg, #007AFF 30%, #5856D6 90%)",
+            backgroundColor: "#007AFF",
+            '&:hover': { backgroundColor: '#0056b3' }
           }}
         >
           Send New Notification
@@ -312,9 +316,13 @@ const NotificationsPage = () => {
       </Box>
 
       {/* Notifications List */}
-      <Paper>
-        <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)}>
-          <Tab label="All Notifications" />
+      <Paper sx={{ border: '1px solid #E5E5EA', boxShadow: 'none' }}>
+        <Tabs 
+          value={activeTab} 
+          onChange={(_, v) => setActiveTab(v)}
+          sx={{ borderBottom: 1, borderColor: 'divider' }}
+        >
+          <Tab label="All" />
           <Tab label={`General (${notifications.filter(n => n.type === 'general').length})`} />
           <Tab label={`Assignments (${notifications.filter(n => n.type === 'assignment').length})`} />
           <Tab label={`CAT Reminders (${notifications.filter(n => n.type === 'cat').length})`} />
@@ -349,8 +357,14 @@ const NotificationsPage = () => {
                         <Chip
                           label={notification.type}
                           size="small"
-                          color={getNotificationColor(notification.type)}
-                          variant="outlined"
+                          sx={{
+                            backgroundColor: notification.type === 'urgent' ? '#007AFF' : '#F2F2F7',
+                            color: notification.type === 'urgent' ? '#FFFFFF' : '#000000',
+                            fontWeight: 700,
+                            borderRadius: 1,
+                            textTransform: 'uppercase',
+                            fontSize: '0.65rem'
+                          }}
                         />
                       </Box>
                     }

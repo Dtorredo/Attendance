@@ -54,9 +54,10 @@ const Layout = () => {
         position="fixed" 
         sx={{ 
           zIndex: (theme) => theme.zIndex.drawer + 1,
-          background: "linear-gradient(45deg, #007AFF 30%, #5856D6 90%)",
-          borderRadius: 0, // Ensure no curved edges
-          boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+          backgroundColor: "#007AFF", // Professional Blue
+          borderRadius: 0,
+          boxShadow: 'none',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.12)'
         }}
       >
         <Toolbar>
@@ -71,15 +72,16 @@ const Layout = () => {
           </IconButton>
           <SchoolIcon sx={{ mr: 2 }} />
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1, fontWeight: 700 }}>
-            Yooh Lecturers
+            Yooh
           </Typography>
           <Typography variant="body2" sx={{ mr: 2, display: { xs: 'none', sm: 'block' } }}>
-            {user?.email}
+            Lecturer: {user?.email}
           </Typography>
           <Button 
             color="inherit" 
             onClick={handleLogout}
             startIcon={<LogoutIcon />}
+            sx={{ border: '1px solid rgba(255, 255, 255, 0.3)' }}
           >
             Logout
           </Button>
@@ -97,8 +99,8 @@ const Layout = () => {
           onClick={toggleDrawer(false)}
           onKeyDown={toggleDrawer(false)}
         >
-          <Box sx={{ p: 2, background: "linear-gradient(45deg, #007AFF 30%, #5856D6 90%)", color: 'white' }}>
-            <Typography variant="h6" fontWeight="bold">Yooh Menu</Typography>
+          <Box sx={{ p: 2, backgroundColor: "#007AFF", color: 'white' }}>
+            <Typography variant="h6" fontWeight="bold">Menu</Typography>
             <Typography variant="caption">{user?.email}</Typography>
           </Box>
           <List>

@@ -204,30 +204,32 @@ const AttendancePage = () => {
         <Grid item xs={12} sm={6} md={3}>
           <Card
             sx={{
-              background: "linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)",
-              boxShadow: 1,
+              backgroundColor: "#FFFFFF",
+              border: '1px solid #E5E5EA',
+              boxShadow: 'none',
             }}
           >
             <CardContent>
-              <Typography color="textSecondary" gutterBottom>
+              <Typography color="textSecondary" variant="caption" sx={{ fontWeight: 600, textTransform: 'uppercase' }}>
                 Total Records
               </Typography>
-              <Typography variant="h4">{stats.total}</Typography>
+              <Typography variant="h4" fontWeight="bold">{stats.total}</Typography>
             </CardContent>
           </Card>
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
           <Card
             sx={{
-              background: "linear-gradient(180deg, #ffffff 0%, #e8f5e9 100%)",
-              boxShadow: 1,
+              backgroundColor: "#FFFFFF",
+              border: '1px solid #E5E5EA',
+              boxShadow: 'none',
             }}
           >
             <CardContent>
-              <Typography color="textSecondary" gutterBottom>
+              <Typography color="textSecondary" variant="caption" sx={{ fontWeight: 600, textTransform: 'uppercase' }}>
                 Present
               </Typography>
-              <Typography variant="h4" color="success.main">
+              <Typography variant="h4" fontWeight="bold" color="primary.main">
                 {stats.present}
               </Typography>
             </CardContent>
@@ -236,15 +238,16 @@ const AttendancePage = () => {
         <Grid item xs={12} sm={6} md={3}>
           <Card
             sx={{
-              background: "linear-gradient(180deg, #ffffff 0%, #ffebee 100%)",
-              boxShadow: 1,
+              backgroundColor: "#FFFFFF",
+              border: '1px solid #E5E5EA',
+              boxShadow: 'none',
             }}
           >
             <CardContent>
-              <Typography color="textSecondary" gutterBottom>
+              <Typography color="textSecondary" variant="caption" sx={{ fontWeight: 600, textTransform: 'uppercase' }}>
                 Absent
               </Typography>
-              <Typography variant="h4" color="error.main">
+              <Typography variant="h4" fontWeight="bold" sx={{ color: '#8E8E93' }}>
                 {stats.absent}
               </Typography>
             </CardContent>
@@ -253,15 +256,16 @@ const AttendancePage = () => {
         <Grid item xs={12} sm={6} md={3}>
           <Card
             sx={{
-              background: "linear-gradient(180deg, #ffffff 0%, #e3f2fd 100%)",
-              boxShadow: 1,
+              backgroundColor: "#FFFFFF",
+              border: '1px solid #E5E5EA',
+              boxShadow: 'none',
             }}
           >
             <CardContent>
-              <Typography color="textSecondary" gutterBottom>
+              <Typography color="textSecondary" variant="caption" sx={{ fontWeight: 600, textTransform: 'uppercase' }}>
                 Attendance Rate
               </Typography>
-              <Typography variant="h4" color="primary.main">
+              <Typography variant="h4" fontWeight="bold" color="primary.main">
                 {stats.rate}%
               </Typography>
             </CardContent>
@@ -370,14 +374,19 @@ const AttendancePage = () => {
                       <Chip
                         icon={
                           record.status === "present" ? (
-                            <CheckCircleIcon />
+                            <CheckCircleIcon sx={{ color: 'inherit !important' }} />
                           ) : (
-                            <CancelIcon />
+                            <CancelIcon sx={{ color: 'inherit !important' }} />
                           )
                         }
                         label={record.status}
-                        color={record.status === "present" ? "success" : "error"}
-                        variant="outlined"
+                        sx={{
+                          backgroundColor: record.status === 'present' ? '#007AFF' : '#F2F2F7',
+                          color: record.status === 'present' ? '#FFFFFF' : '#000000',
+                          fontWeight: 700,
+                          borderRadius: 1,
+                          '& .MuiChip-icon': { color: 'inherit' }
+                        }}
                       />
                     </TableCell>
                     <TableCell>{record.location || "N/A"}</TableCell>
