@@ -54,10 +54,11 @@ const Layout = () => {
         position="fixed" 
         sx={{ 
           zIndex: (theme) => theme.zIndex.drawer + 1,
-          backgroundColor: "#007AFF", // Professional Blue
+          backgroundColor: "#FFFFFF", // White background
+          color: "#000000", // Black text
           borderRadius: 0,
           boxShadow: 'none',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.12)'
+          borderBottom: '1px solid #E5E5EA'
         }}
       >
         <Toolbar>
@@ -66,22 +67,27 @@ const Layout = () => {
             aria-label="open drawer"
             edge="start"
             onClick={toggleDrawer(true)}
-            sx={{ mr: 2 }}
+            sx={{ mr: 2, color: "#000000" }}
           >
             <MenuIcon />
           </IconButton>
-          <SchoolIcon sx={{ mr: 2 }} />
-          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1, fontWeight: 700 }}>
+          <SchoolIcon sx={{ mr: 2, color: "#007AFF" }} />
+          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1, fontWeight: 700, color: "#000000" }}>
             Yooh
           </Typography>
-          <Typography variant="body2" sx={{ mr: 2, display: { xs: 'none', sm: 'block' } }}>
+          <Typography variant="body2" sx={{ mr: 2, display: { xs: 'none', sm: 'block' }, color: "#48484A" }}>
             Lecturer: {user?.email}
           </Typography>
           <Button 
-            color="inherit" 
+            variant="outlined"
+            color="primary"
             onClick={handleLogout}
             startIcon={<LogoutIcon />}
-            sx={{ border: '1px solid rgba(255, 255, 255, 0.3)' }}
+            sx={{ 
+              borderRadius: 1,
+              textTransform: 'none',
+              fontWeight: 600
+            }}
           >
             Logout
           </Button>
@@ -99,9 +105,9 @@ const Layout = () => {
           onClick={toggleDrawer(false)}
           onKeyDown={toggleDrawer(false)}
         >
-          <Box sx={{ p: 2, backgroundColor: "#007AFF", color: 'white' }}>
-            <Typography variant="h6" fontWeight="bold">Menu</Typography>
-            <Typography variant="caption">{user?.email}</Typography>
+          <Box sx={{ p: 2, backgroundColor: "#FFFFFF", borderBottom: '1px solid #E5E5EA' }}>
+            <Typography variant="h6" fontWeight="bold" color="#000000">Menu</Typography>
+            <Typography variant="caption" color="#48484A">{user?.email}</Typography>
           </Box>
           <List>
             {menuItems.map((item) => (

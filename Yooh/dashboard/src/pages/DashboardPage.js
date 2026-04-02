@@ -443,6 +443,7 @@ const DashboardPage = () => {
   }, [sortedStudents]);
 
   const attendanceDistributionData = useMemo(() => {
+    // Calculate distribution based on actual student performance rates
     const excellent = sortedStudents.filter((s) => s.stats.attendance.rate >= 90).length;
     const good = sortedStudents.filter(
       (s) => s.stats.attendance.rate >= 75 && s.stats.attendance.rate < 90
