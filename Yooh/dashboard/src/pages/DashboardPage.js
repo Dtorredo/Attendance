@@ -480,6 +480,16 @@ const DashboardPage = () => {
     return last7Days;
   }, [attendance]);
 
+  const uniqueClassesCount = useMemo(() => {
+    const seen = new Set();
+    return classes.filter(c => {
+      const key = `${c.title}-${c.startDate}-${c.endDate}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }).length;
+  }, [classes]);
+
   if (loading) {
     return (
       <Container>
@@ -650,7 +660,7 @@ const DashboardPage = () => {
                     <Typography color="textSecondary" variant="caption" sx={{ textTransform: 'uppercase', fontWeight: 600, letterSpacing: 1 }}>
                       Total Classes
                     </Typography>
-                    <Typography variant="h4" fontWeight="bold">{classes.length}</Typography>
+                    <Typography variant="h4" fontWeight="bold">{uniqueClassesCount}</Typography>
                   </Box>
                 </Box>
               </CardContent>

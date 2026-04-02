@@ -112,20 +112,25 @@ const AttendancePage = () => {
     // 1. Total PRESENT check-ins from database
     const present = records.filter((r) => r.status === "present").length;
     
-    // 2. Total EXPECTED records (based on classes assigned to students)
-    // If a student is assigned to 8 classes, they should have 8 records.
-    let totalExpected = 0;
-    students.forEach(student => {
-      const studentClassesCount = classes.filter(c => c.userId === student.id).length;
-      totalExpected += studentClassesCount;
-    });
+    // 2. Count UNIQUE Class Events (Grouped by title and time)
+    const seen = new Set();
+    const uniqueClassEvents = classes.filter(c => {
+      const key = `${c.title}-${c.startDate}-${c.endDate}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }).length;
 
-    // 3. Fallback: If no classes are assigned, use total records in database
+    // 3. Total EXPECTED records (Total students * unique classes)
+    // This gives a cleaner "institutional" number
+    const totalExpected = students.length * uniqueClassEvents;
+
+    // 4. Fallback: If no classes are assigned, use total records in database
     const finalTotal = Math.max(totalExpected, records.length);
     const finalAbsent = Math.max(0, finalTotal - present);
     
     return { 
-      total: finalTotal, 
+      total: uniqueClassEvents, // Show total unique class events planned
       present, 
       absent: finalAbsent, 
       rate: finalTotal > 0 ? Math.round((present / finalTotal) * 100) : 0 

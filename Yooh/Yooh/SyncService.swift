@@ -213,6 +213,11 @@ class SyncService: ObservableObject {
                         self?.performDuplicateCleanup()
                         
                         try? self?.modelContext?.save()
+
+                        // 🔔 TRIGGER: Reschedule notifications so new classes get their iPhone alerts
+                        if let context = self?.modelContext, let userId = self?.currentUserId {
+                            NotificationManager.shared.rescheduleAllNotifications(modelContext: context, currentUserId: userId)
+                        }
                     }
                 }
             }
