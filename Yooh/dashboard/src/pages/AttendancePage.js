@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { useAuth } from "../context/AuthContext";
 import dataService from "../services/dataService";
 import {
   Container,
@@ -43,7 +42,6 @@ import {
 } from "@mui/icons-material";
 
 const AttendancePage = () => {
-  const { user, logout } = useAuth();
   const [records, setRecords] = useState([]);
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -55,8 +53,8 @@ const AttendancePage = () => {
 
   useEffect(() => {
     loadData();
-    // Set up real-time listener
-    const unsubscribe = dataService.subscribeToAttendanceRecords((attendanceData) => {
+    // Set up real-time listener for ALL records (Lecturer view)
+    const unsubscribe = dataService.subscribeToAllAttendance((attendanceData) => {
       setRecords(attendanceData);
     });
     return () => unsubscribe();

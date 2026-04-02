@@ -540,10 +540,11 @@ const DashboardPage = () => {
         )}
 
         {/* Stats Cards */}
-        <Grid container spacing={3} sx={{ mb: 4 }}>
-          <Grid item xs={12} sm={6} md={3}>
+        <Grid container spacing={3} sx={{ mb: 4 }} alignItems="stretch">
+          <Grid item xs={12} sm={6} md={3} sx={{ display: 'flex' }}>
             <Card
               sx={{
+                flexGrow: 1,
                 borderRadius: 2,
                 border: "1px solid",
                 borderColor: "divider",
@@ -553,24 +554,25 @@ const DashboardPage = () => {
                 "&:hover": { transform: "translateY(-3px)", boxShadow: 8 },
               }}
             >
-              <CardContent>
-                <Box sx={{ display: "flex", alignItems: "center" }}>
+              <CardContent sx={{ height: '100%', display: 'flex', alignItems: 'center' }}>
+                <Box sx={{ display: "flex", alignItems: "center", width: '100%' }}>
                   <PeopleIcon
                     sx={{ fontSize: 40, color: "primary.main", mr: 2 }}
                   />
                   <Box>
-                    <Typography color="textSecondary" gutterBottom>
+                    <Typography color="textSecondary" variant="body2" gutterBottom>
                       Total Students
                     </Typography>
-                    <Typography variant="h4">{students.length}</Typography>
+                    <Typography variant="h4" fontWeight="bold">{students.length}</Typography>
                   </Box>
                 </Box>
               </CardContent>
             </Card>
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid item xs={12} sm={6} md={3} sx={{ display: 'flex' }}>
             <Card
               sx={{
+                flexGrow: 1,
                 borderRadius: 2,
                 border: "1px solid",
                 borderColor: "divider",
@@ -580,24 +582,25 @@ const DashboardPage = () => {
                 "&:hover": { transform: "translateY(-3px)", boxShadow: 8 },
               }}
             >
-              <CardContent>
-                <Box sx={{ display: "flex", alignItems: "center" }}>
+              <CardContent sx={{ height: '100%', display: 'flex', alignItems: 'center' }}>
+                <Box sx={{ display: "flex", alignItems: "center", width: '100%' }}>
                   <AttendanceIcon
                     sx={{ fontSize: 40, color: "success.main", mr: 2 }}
                   />
                   <Box>
-                    <Typography color="textSecondary" gutterBottom>
-                      Total Attendance Records
+                    <Typography color="textSecondary" variant="body2" gutterBottom>
+                      Attendance Records
                     </Typography>
-                    <Typography variant="h4">{attendance.length}</Typography>
+                    <Typography variant="h4" fontWeight="bold">{attendance.length}</Typography>
                   </Box>
                 </Box>
               </CardContent>
             </Card>
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid item xs={12} sm={6} md={3} sx={{ display: 'flex' }}>
             <Card
               sx={{
+                flexGrow: 1,
                 borderRadius: 2,
                 border: "1px solid",
                 borderColor: "divider",
@@ -607,24 +610,25 @@ const DashboardPage = () => {
                 "&:hover": { transform: "translateY(-3px)", boxShadow: 8 },
               }}
             >
-              <CardContent>
-                <Box sx={{ display: "flex", alignItems: "center" }}>
+              <CardContent sx={{ height: '100%', display: 'flex', alignItems: 'center' }}>
+                <Box sx={{ display: "flex", alignItems: "center", width: '100%' }}>
                   <AssignmentIcon
                     sx={{ fontSize: 40, color: "warning.main", mr: 2 }}
                   />
                   <Box>
-                    <Typography color="textSecondary" gutterBottom>
+                    <Typography color="textSecondary" variant="body2" gutterBottom>
                       Total Assignments
                     </Typography>
-                    <Typography variant="h4">{assignments.length}</Typography>
+                    <Typography variant="h4" fontWeight="bold">{assignments.length}</Typography>
                   </Box>
                 </Box>
               </CardContent>
             </Card>
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid item xs={12} sm={6} md={3} sx={{ display: 'flex' }}>
             <Card
               sx={{
+                flexGrow: 1,
                 borderRadius: 2,
                 border: "1px solid",
                 borderColor: "divider",
@@ -634,16 +638,16 @@ const DashboardPage = () => {
                 "&:hover": { transform: "translateY(-3px)", boxShadow: 8 },
               }}
             >
-              <CardContent>
-                <Box sx={{ display: "flex", alignItems: "center" }}>
+              <CardContent sx={{ height: '100%', display: 'flex', alignItems: 'center' }}>
+                <Box sx={{ display: "flex", alignItems: "center", width: '100%' }}>
                   <SchoolIcon
                     sx={{ fontSize: 40, color: "info.main", mr: 2 }}
                   />
                   <Box>
-                    <Typography color="textSecondary" gutterBottom>
+                    <Typography color="textSecondary" variant="body2" gutterBottom>
                       Total Classes
                     </Typography>
-                    <Typography variant="h4">{classes.length}</Typography>
+                    <Typography variant="h4" fontWeight="bold">{classes.length}</Typography>
                   </Box>
                 </Box>
               </CardContent>
@@ -653,28 +657,28 @@ const DashboardPage = () => {
 
         {/* Analytics Charts */}
         <Grid container spacing={3} sx={{ mb: 4 }}>
-          <Grid item xs={12} md={6}>
-            <Paper sx={{ p: 3 }}>
-              <Typography variant="h6" gutterBottom>
+          <Grid item xs={12} md={7}>
+            <Paper sx={{ p: 3, height: '100%' }}>
+              <Typography variant="h6" gutterBottom fontWeight="bold">
                 <TrendingUpIcon sx={{ mr: 1, verticalAlign: "middle" }} />
                 Student Performance Comparison
               </Typography>
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} />
+                  <YAxis axisLine={false} tickLine={false} />
                   <RechartsTooltip />
-                  <Legend />
-                  <Bar dataKey="attendance" fill="#1976d2" name="Attendance %" />
-                  <Bar dataKey="assignments" fill="#2e7d32" name="Assignment %" />
+                  <Legend iconType="circle" />
+                  <Bar dataKey="attendance" fill="#007AFF" name="Attendance %" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="assignments" fill="#5856D6" name="Assignment %" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </Paper>
           </Grid>
-          <Grid item xs={12} md={6}>
-            <Paper sx={{ p: 3 }}>
-              <Typography variant="h6" gutterBottom>
+          <Grid item xs={12} md={5}>
+            <Paper sx={{ p: 3, height: '100%' }}>
+              <Typography variant="h6" gutterBottom fontWeight="bold">
                 Attendance Distribution
               </Typography>
               <ResponsiveContainer width="100%" height={300}>
@@ -683,10 +687,9 @@ const DashboardPage = () => {
                     data={attendanceDistributionData}
                     cx="50%"
                     cy="50%"
-                    labelLine={true}
-                    label={({ name, value }) => `${value}`}
+                    innerRadius={60}
                     outerRadius={80}
-                    fill="#8884d8"
+                    paddingAngle={5}
                     dataKey="value"
                   >
                     {attendanceDistributionData.map((entry, index) => (
@@ -694,7 +697,7 @@ const DashboardPage = () => {
                     ))}
                   </Pie>
                   <RechartsTooltip />
-                  <Legend verticalAlign="bottom" height={36}/>
+                  <Legend verticalAlign="bottom" align="center" layout="horizontal" iconType="circle" />
                 </PieChart>
               </ResponsiveContainer>
             </Paper>

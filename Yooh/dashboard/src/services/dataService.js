@@ -259,6 +259,10 @@ class DataService {
     return this.subscribeToUserData("attendance", callback, "timestamp");
   }
 
+  subscribeToAllAttendance(callback) {
+    return this.subscribeToAllData("attendance", callback, "timestamp");
+  }
+
   async getAttendanceForClass(classId) {
     try {
       const user = authService.getCurrentUser();
