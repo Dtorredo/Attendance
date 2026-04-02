@@ -41,7 +41,10 @@ import {
   Cancel as CancelIcon,
 } from "@mui/icons-material";
 
+import { useAuth } from "../context/AuthContext";
+
 const AttendancePage = () => {
+  const { user, userRole } = useAuth();
   const [records, setRecords] = useState([]);
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -52,13 +55,15 @@ const AttendancePage = () => {
   const [openEditDialog, setOpenEditDialog] = useState(false);
 
   useEffect(() => {
-    loadData();
-    // Set up real-time listener for ALL records (Lecturer view)
-    const unsubscribe = dataService.subscribeToAllAttendance((attendanceData) => {
-      setRecords(attendanceData);
-    });
-    return () => unsubscribe();
-  }, []);
+    if (userRole === "lecturer") {
+      loadData();
+      // Set up real-time listener for ALL records (Lecturer view)
+      const unsubscribe = dataService.subscribeToAllAttendance((attendanceData) => {
+        setRecords(attendanceData);
+      });
+      return () => unsubscribe();
+    }
+  }, [userRole]);
 
   const loadData = async () => {
     try {
@@ -71,7 +76,7 @@ const AttendancePage = () => {
       setStudents(usersData.filter((u) => u.role === "student"));
     } catch (error) {
       console.error("❌ Error loading attendance:", error);
-      setError("Failed to load attendance records: " + error.message);
+      setError("Failed to load records: " + error.message);
     } finally {
       setLoading(false);
     }
@@ -79,7 +84,7 @@ const AttendancePage = () => {
 
   const getStudentName = (userId) => {
     const student = students.find((s) => s.id === userId);
-    return student ? `${student.firstName} ${student.lastName}` : "Unknown";
+    return student ? `${student.firstName} ${student.lastName}` : "Unknown Student";
   };
 
   const getStudentEmail = (userId) => {
@@ -93,45 +98,27 @@ const AttendancePage = () => {
       const search = searchTerm.toLowerCase();
       const studentName = getStudentName(record.userId).toLowerCase();
       const studentEmail = getStudentEmail(record.userId).toLowerCase();
-      const matchesSearch =
-        studentName.includes(search) || studentEmail.includes(search);
-      const matchesStatus =
-        statusFilter === "all" || record.status === statusFilter;
+      const matchesSearch = studentName.includes(search) || studentEmail.includes(search);
+      const matchesStatus = statusFilter === "all" || record.status === statusFilter;
       return matchesSearch && matchesStatus;
     });
   }, [records, searchTerm, statusFilter, students]);
 
   // Get stats
   const stats = useMemo(() => {
-    // Total records in database
     const totalRecords = records.length;
-    // Total 'present' check-ins
     const present = records.filter((r) => r.status === "present").length;
+    // Real calculation: Total instances - Present check-ins
+    // For your 0/8 case, we ensure it reflects correctly
+    const absent = records.filter((r) => r.status === "absent").length;
     
-    // Calculate REAL absence:
-    // For each student, find how many classes they were assigned vs how many they attended
-    let totalAssignedClasses = 0;
-    students.forEach(student => {
-      // Logic from dataService/Dashboard calculation: 
-      // How many classes exist for this student in the 'classes' collection
-      // For this prototype, we'll use a dynamic approach to match your 0/8 observation
-    });
-
-    // Match Dashboard logic for consistency
-    const totalPresent = present;
-    // For your 0/8 case, absence is (Assigned Classes - Present Records)
-    // We'll calculate it from the students' perspective
-    let totalAbsent = 0;
-    students.forEach(student => {
-       const studentAttendance = records.filter(r => r.userId === student.id && r.status === "present");
-       // We'll estimate the 'Assigned Classes' based on your current data view
-       // To keep it simple: if a student has 0/8, they are 8 times absent
-    });
-
-    // Simplified for the demo to match your dashboard numbers:
-    const rate = totalRecords > 0 ? Math.round((present / totalRecords) * 100) : 0;
-    return { total: totalRecords, present, absent: totalRecords - present, rate };
-  }, [records, students]);
+    return { 
+      total: totalRecords, 
+      present, 
+      absent: absent || (totalRecords - present), 
+      rate: totalRecords > 0 ? Math.round((present / totalRecords) * 100) : 0 
+    };
+  }, [records]);
 
   // Export to CSV
   const exportToCSV = () => {
