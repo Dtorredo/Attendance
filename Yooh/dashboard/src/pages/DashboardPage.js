@@ -436,7 +436,7 @@ const DashboardPage = () => {
   // Prepare chart data
   const chartData = useMemo(() => {
     return sortedStudents.slice(0, 10).map((s) => ({
-      name: `${s.firstName?.charAt(0) || ""}. ${s.lastName || ""}`,
+      name: `${s.firstName || ""} ${s.lastName || ""}`.trim() || s.email,
       attendance: s.stats.attendance.rate,
       assignments: s.stats.assignments.rate,
     }));

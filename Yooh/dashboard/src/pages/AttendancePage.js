@@ -47,6 +47,7 @@ const AttendancePage = () => {
   const { user, userRole } = useAuth();
   const [records, setRecords] = useState([]);
   const [students, setStudents] = useState([]);
+  const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -68,12 +69,14 @@ const AttendancePage = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [attendanceData, usersData] = await Promise.all([
+      const [attendanceData, usersData, classesData] = await Promise.all([
         dataService.getAllData("attendance", "timestamp"),
         dataService.getAllUsers(),
+        dataService.getAllData("classes", "startDate"),
       ]);
       setRecords(attendanceData);
       setStudents(usersData.filter((u) => u.role === "student"));
+      setClasses(classesData);
     } catch (error) {
       console.error("❌ Error loading attendance:", error);
       setError("Failed to load records: " + error.message);
@@ -106,19 +109,28 @@ const AttendancePage = () => {
 
   // Get stats
   const stats = useMemo(() => {
-    const totalRecords = records.length;
+    // 1. Total PRESENT check-ins from database
     const present = records.filter((r) => r.status === "present").length;
-    // Real calculation: Total instances - Present check-ins
-    // For your 0/8 case, we ensure it reflects correctly
-    const absent = records.filter((r) => r.status === "absent").length;
+    
+    // 2. Total EXPECTED records (based on classes assigned to students)
+    // If a student is assigned to 8 classes, they should have 8 records.
+    let totalExpected = 0;
+    students.forEach(student => {
+      const studentClassesCount = classes.filter(c => c.userId === student.id).length;
+      totalExpected += studentClassesCount;
+    });
+
+    // 3. Fallback: If no classes are assigned, use total records in database
+    const finalTotal = Math.max(totalExpected, records.length);
+    const finalAbsent = Math.max(0, finalTotal - present);
     
     return { 
-      total: totalRecords, 
+      total: finalTotal, 
       present, 
-      absent: absent || (totalRecords - present), 
-      rate: totalRecords > 0 ? Math.round((present / totalRecords) * 100) : 0 
+      absent: finalAbsent, 
+      rate: finalTotal > 0 ? Math.round((present / finalTotal) * 100) : 0 
     };
-  }, [records]);
+  }, [records, students, classes]);
 
   // Export to CSV
   const exportToCSV = () => {
