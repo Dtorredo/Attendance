@@ -4,24 +4,23 @@ import { AuthProvider } from './context/AuthContext';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import AttendancePage from './pages/AttendancePage';
-import ManagementPage from './pages/ManagementPage';
 import PrivateRoute from './hocs/PrivateRoute';
 import Layout from './hocs/Layout';
 import { CssBaseline, ThemeProvider, createTheme } from '@mui/material';
 
-// Professional Blue and White color scheme
+
 const theme = createTheme({
   palette: {
     primary: {
-      main: '#007AFF', // Professional Blue
+      main: '#007AFF',
     },
     background: {
-      default: '#FFFFFF', // Clean White
+      default: '#FFFFFF', 
       paper: '#FFFFFF',
     },
     text: {
-      primary: '#000000', // Solid Black
-      secondary: '#48484A', // Dark Gray for secondary
+      primary: '#000000', 
+      secondary: '#48484A', 
     },
   },
   typography: {
@@ -89,7 +88,6 @@ function App() {
               <Route element={<Layout />}>
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/attendance" element={<AttendancePage />} />
-                <Route path="/management" element={<ManagementPage />} />
               </Route>
             </Route>
             <Route path="*" element={<Navigate to="/dashboard" />} />
