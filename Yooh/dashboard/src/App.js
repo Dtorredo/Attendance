@@ -4,6 +4,7 @@ import { AuthProvider } from './context/AuthContext';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import AttendancePage from './pages/AttendancePage';
+import ManagementPage from './pages/ManagementPage';
 import PrivateRoute from './hocs/PrivateRoute';
 import Layout from './hocs/Layout';
 import { CssBaseline, ThemeProvider, createTheme } from '@mui/material';
@@ -88,6 +89,7 @@ function App() {
               <Route element={<Layout />}>
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/attendance" element={<AttendancePage />} />
+                <Route path="/management" element={<ManagementPage />} />
               </Route>
             </Route>
             <Route path="*" element={<Navigate to="/dashboard" />} />
