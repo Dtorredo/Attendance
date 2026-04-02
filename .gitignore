@@ -4,6 +4,9 @@
 .AppleDouble
 .LSOverride
 
+# Qwen Code (AI assistant)
+.qwen/
+
 # Xcode
 #
 # gitignore contributors: remember to keep this file simple and straightforward
