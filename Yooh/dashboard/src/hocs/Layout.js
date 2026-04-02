@@ -33,6 +33,7 @@ const Layout = () => {
   const menuItems = [
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
     { text: 'Attendance', icon: <ListAltIcon />, path: '/attendance' },
+    { text: 'Management', icon: <ClassIcon />, path: '/management' },
   ];
 
   const handleLogout = () => {
