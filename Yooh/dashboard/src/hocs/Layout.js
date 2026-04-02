@@ -17,9 +17,9 @@ import {
   Menu as MenuIcon,
   Dashboard as DashboardIcon,
   ListAlt as ListAltIcon,
-  Notifications as NotificationsIcon,
   School as SchoolIcon,
   Logout as LogoutIcon,
+  Class as ClassIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
