@@ -357,6 +357,38 @@ class DataService {
     }
   }
 
+  // Real-time listener for ALL data in a collection (for lecturers)
+  subscribeToAllData(collectionName, callback, orderByField = "createdAt") {
+    try {
+      const user = authService.getCurrentUser();
+      if (!user) throw new Error("User not authenticated");
+
+      console.log(`🔄 Subscribing to ALL ${collectionName} data for lecturer...`);
+      const q = query(
+        collection(db, collectionName),
+        orderBy(orderByField, "desc")
+      );
+
+      const unsubscribe = onSnapshot(q, (querySnapshot) => {
+        const data = querySnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        console.log(`🔔 Real-time ${collectionName} update: ${data.length} records`);
+        callback(data);
+      });
+
+      // Store the unsubscribe function
+      const key = `${collectionName}_all_${user.uid}`;
+      this.listeners.set(key, unsubscribe);
+
+      return unsubscribe;
+    } catch (error) {
+      console.error(`❌ Error subscribing to ALL ${collectionName}:`, error);
+      throw error;
+    }
+  }
+
   // Get user profile
   async getUserProfile(userId = null) {
     try {

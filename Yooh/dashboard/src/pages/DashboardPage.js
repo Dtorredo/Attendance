@@ -37,11 +37,7 @@ import {
   Tooltip,
   IconButton,
   InputAdornment,
-  Drawer,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
+  Badge,
 } from "@mui/material";
 import {
   School as SchoolIcon,
@@ -55,7 +51,6 @@ import {
   TrendingUp as TrendingUpIcon,
   Delete as DeleteIcon,
   Notifications as NotificationsIcon,
-  Menu as MenuIcon,
   Dashboard as DashboardIcon,
   ListAlt as ListAltIcon,
 } from "@mui/icons-material";
@@ -124,9 +119,6 @@ const DashboardPage = () => {
   // Attendance record for editing
   const [selectedAttendanceRecord, setSelectedAttendanceRecord] = useState(null);
 
-  // Drawer state
-  const [drawerOpen, setDrawerOpen] = useState(false);
-
   // Real-time setup
   useEffect(() => {
     console.log("🔍 Dashboard useEffect - userRole:", userRole, "user:", user?.email);
@@ -165,20 +157,17 @@ const DashboardPage = () => {
       setStudents(studentsOnly);
 
       // Set up real-time listeners for dynamic data
-      dataService.subscribeToAttendanceRecords((attendanceData) => {
-        console.log("🔔 Real-time attendance update:", attendanceData.length, "records");
+      dataService.subscribeToAllData("attendance", (attendanceData) => {
         setAttendance(attendanceData);
-      });
+      }, "timestamp");
 
-      dataService.subscribeToAssignments((assignmentsData) => {
-        console.log("🔔 Real-time assignment update:", assignmentsData.length, "records");
+      dataService.subscribeToAllData("assignments", (assignmentsData) => {
         setAssignments(assignmentsData);
-      });
+      }, "dueDate");
 
-      dataService.subscribeToClasses((classesData) => {
-        console.log("🔔 Real-time class update:", classesData.length, "records");
+      dataService.subscribeToAllData("classes", (classesData) => {
         setClasses(classesData);
-      });
+      }, "startDate");
     } catch (error) {
       console.error("❌ Error setting up listeners:", error);
       setError("Failed to load dashboard data: " + error.message);
@@ -532,83 +521,7 @@ const DashboardPage = () => {
 
   return (
     <Box sx={{ flexGrow: 1 }}>
-      {/* App Bar */}
-      <AppBar
-        position="static"
-        sx={{ background: "linear-gradient(45deg, #007AFF 30%, #5856D6 90%)" }}
-      >
-        <Toolbar>
-          <IconButton
-            edge="start"
-            color="inherit"
-            onClick={() => setDrawerOpen(!drawerOpen)}
-            sx={{ mr: 2 }}
-          >
-            <MenuIcon />
-          </IconButton>
-          <SchoolIcon sx={{ mr: 2 }} />
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            Yooh - Lecturer Dashboard
-          </Typography>
-          <Typography variant="body2" sx={{ mr: 2 }}>
-            Welcome, {user?.email}
-          </Typography>
-          <Button color="inherit" onClick={handleLogout}>
-            Logout
-          </Button>
-        </Toolbar>
-      </AppBar>
-
-      {/* Drawer Navigation */}
-      <Drawer open={drawerOpen} onClose={() => setDrawerOpen(false)}>
-        <Box sx={{ width: 250 }}>
-          <Box sx={{ p: 2, background: "linear-gradient(45deg, #007AFF 30%, #5856D6 90%)" }}>
-            <Typography variant="h6" color="white">
-              Yooh Dashboard
-            </Typography>
-          </Box>
-          <List>
-            <ListItem
-              button
-              onClick={() => {
-                navigate("/dashboard");
-                setDrawerOpen(false);
-              }}
-            >
-              <ListItemIcon>
-                <DashboardIcon />
-              </ListItemIcon>
-              <ListItemText primary="Dashboard" />
-            </ListItem>
-            <ListItem
-              button
-              onClick={() => {
-                navigate("/attendance");
-                setDrawerOpen(false);
-              }}
-            >
-              <ListItemIcon>
-                <ListAltIcon />
-              </ListItemIcon>
-              <ListItemText primary="Attendance Records" />
-            </ListItem>
-            <ListItem
-              button
-              onClick={() => {
-                navigate("/notifications");
-                setDrawerOpen(false);
-              }}
-            >
-              <ListItemIcon>
-                <NotificationsIcon />
-              </ListItemIcon>
-              <ListItemText primary="Notifications" />
-            </ListItem>
-          </List>
-        </Box>
-      </Drawer>
-
-      <Container sx={{ mt: 4, mb: 4 }}>
+      <Container sx={{ mt: 2, mb: 4 }}>
         {/* At-Risk Alert */}
         {atRiskStudents.length > 0 && (
           <Alert
@@ -770,8 +683,8 @@ const DashboardPage = () => {
                     data={attendanceDistributionData}
                     cx="50%"
                     cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                    labelLine={true}
+                    label={({ name, value }) => `${value}`}
                     outerRadius={80}
                     fill="#8884d8"
                     dataKey="value"
@@ -781,6 +694,7 @@ const DashboardPage = () => {
                     ))}
                   </Pie>
                   <RechartsTooltip />
+                  <Legend verticalAlign="bottom" height={36}/>
                 </PieChart>
               </ResponsiveContainer>
             </Paper>
@@ -1142,6 +1056,17 @@ const DashboardPage = () => {
               )}
               {activeTab === 2 && (
                 <Grid item xs={12}>
+                  <Box sx={{ mb: 1, display: 'flex', justifyContent: 'flex-end' }}>
+                    <Button 
+                      size="small" 
+                      onClick={() => setClassForm({
+                        ...classForm, 
+                        selectedStudents: students.map(s => s.id)
+                      })}
+                    >
+                      Select All Students
+                    </Button>
+                  </Box>
                   <FormControl fullWidth>
                     <InputLabel id="select-students-label">
                       Select Students
@@ -1287,6 +1212,17 @@ const DashboardPage = () => {
                 />
               </Grid>
               <Grid item xs={12}>
+                <Box sx={{ mb: 1, display: 'flex', justifyContent: 'flex-end' }}>
+                  <Button 
+                    size="small" 
+                    onClick={() => setAssignmentForm({
+                      ...assignmentForm, 
+                      selectedStudents: students.map(s => s.id)
+                    })}
+                  >
+                    Select All Students
+                  </Button>
+                </Box>
                 <FormControl fullWidth>
                   <InputLabel id="select-students-assign-label">
                     Select Students

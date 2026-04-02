@@ -461,9 +461,21 @@ const NotificationsPage = () => {
                 </FormControl>
               </Grid>
               <Grid item xs={12}>
+                <Box sx={{ mb: 1, display: 'flex', justifyContent: 'flex-end' }}>
+                  <Button 
+                    size="small" 
+                    onClick={() => setNotificationForm({
+                      ...notificationForm, 
+                      selectedStudents: students.map(s => s.id)
+                    })}
+                  >
+                    Select All Students
+                  </Button>
+                </Box>
                 <FormControl fullWidth>
-                  <InputLabel>Select Students</InputLabel>
+                  <InputLabel id="select-students-notif-label">Select Students</InputLabel>
                   <Select
+                    labelId="select-students-notif-label"
                     label="Select Students"
                     multiple
                     value={notificationForm.selectedStudents}

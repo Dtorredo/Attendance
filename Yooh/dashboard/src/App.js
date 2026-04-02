@@ -6,6 +6,7 @@ import DashboardPage from './pages/DashboardPage';
 import AttendancePage from './pages/AttendancePage';
 import NotificationsPage from './pages/NotificationsPage';
 import PrivateRoute from './hocs/PrivateRoute';
+import Layout from './hocs/Layout';
 import { CssBaseline, ThemeProvider, createTheme } from '@mui/material';
 
 // iOS Blue color scheme to match the iOS app
@@ -104,14 +105,12 @@ function App() {
         <Router>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
-            <Route path="/dashboard" element={<PrivateRoute />}>
-              <Route path="" element={<DashboardPage />} />
-            </Route>
-            <Route path="/attendance" element={<PrivateRoute />}>
-              <Route path="" element={<AttendancePage />} />
-            </Route>
-            <Route path="/notifications" element={<PrivateRoute />}>
-              <Route path="" element={<NotificationsPage />} />
+            <Route element={<PrivateRoute />}>
+              <Route element={<Layout />}>
+                <Route path="/dashboard" element={<DashboardPage />} />
+                <Route path="/attendance" element={<AttendancePage />} />
+                <Route path="/notifications" element={<NotificationsPage />} />
+              </Route>
             </Route>
             <Route path="*" element={<Navigate to="/dashboard" />} />
           </Routes>
