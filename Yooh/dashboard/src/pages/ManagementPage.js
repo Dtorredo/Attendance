@@ -125,16 +125,23 @@ const ManagementPage = () => {
     try {
       const promises = selectedItem.docIds.map((id) => {
         let updates = {};
+        
+        // Helper to get a clean ISO string date part (YYYY-MM-DD)
+        const getBaseDate = (dateVal) => {
+          const d = new Date(dateVal?.toDate?.() || dateVal);
+          return d.toISOString().split('T')[0];
+        };
+
         if (editType === 'class') {
-          // Combine date and time for Firestore
-          const startDateTime = new Date(`${selectedItem.startDate.split('T')[0]}T${selectedItem.startTime}`);
-          const endDateTime = new Date(`${selectedItem.startDate.split('T')[0]}T${selectedItem.endTime}`);
+          const baseDate = getBaseDate(selectedItem.startDate);
+          const startDateTime = new Date(`${baseDate}T${selectedItem.startTime}`);
+          const endDateTime = new Date(`${baseDate}T${selectedItem.endTime}`);
           
           updates = { 
             title: selectedItem.title, 
             location: selectedItem.location, 
-            startDate: startDateTime.toISOString(),
-            endDate: endDateTime.toISOString(),
+            startDate: startDateTime, // Send as Date object for Firebase
+            endDate: endDateTime,
             dayOfWeek: selectedItem.dayOfWeek
           };
         } else {
@@ -142,7 +149,7 @@ const ManagementPage = () => {
             title: selectedItem.title, 
             priority: selectedItem.priority, 
             details: selectedItem.details,
-            dueDate: new Date(selectedItem.dueDate).toISOString()
+            dueDate: new Date(selectedItem.dueDate?.toDate?.() || selectedItem.dueDate)
           };
         }
         return editType === 'class' 
@@ -152,7 +159,8 @@ const ManagementPage = () => {
       await Promise.all(promises);
       setOpenEditDialog(false);
     } catch (e) {
-      alert("Failed to update items");
+      console.error("Update Error:", e);
+      alert("Update failed: " + e.message);
     }
   };
 
