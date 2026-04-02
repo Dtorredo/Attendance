@@ -124,9 +124,27 @@ const ManagementPage = () => {
   const handleUpdate = async () => {
     try {
       const promises = selectedItem.docIds.map((id) => {
-        const updates = editType === 'class' 
-          ? { title: selectedItem.title, location: selectedItem.location, notes: selectedItem.notes }
-          : { title: selectedItem.title, priority: selectedItem.priority, details: selectedItem.details };
+        let updates = {};
+        if (editType === 'class') {
+          // Combine date and time for Firestore
+          const startDateTime = new Date(`${selectedItem.startDate.split('T')[0]}T${selectedItem.startTime}`);
+          const endDateTime = new Date(`${selectedItem.startDate.split('T')[0]}T${selectedItem.endTime}`);
+          
+          updates = { 
+            title: selectedItem.title, 
+            location: selectedItem.location, 
+            startDate: startDateTime.toISOString(),
+            endDate: endDateTime.toISOString(),
+            dayOfWeek: selectedItem.dayOfWeek
+          };
+        } else {
+          updates = { 
+            title: selectedItem.title, 
+            priority: selectedItem.priority, 
+            details: selectedItem.details,
+            dueDate: new Date(selectedItem.dueDate).toISOString()
+          };
+        }
         return editType === 'class' 
           ? dataService.updateClass(id, updates) 
           : dataService.updateAssignment(id, updates);
@@ -191,7 +209,11 @@ const ManagementPage = () => {
                     <Chip label={`${item.studentIds.length} Students`} size="small" variant="outlined" />
                   </TableCell>
                   <TableCell align="center">
-                    <IconButton size="small" onClick={() => handleEditClick(item, activeTab === 0 ? 'class' : 'assignment')} sx={{ color: '#007AFF' }}>
+                    <IconButton size="small" onClick={() => {
+                      const startTime = new Date(item.startDate?.toDate?.() || item.startDate).toTimeString().slice(0,5);
+                      const endTime = new Date(item.endDate?.toDate?.() || item.endDate).toTimeString().slice(0,5);
+                      handleEditClick({...item, startTime, endTime}, activeTab === 0 ? 'class' : 'assignment');
+                    }} sx={{ color: '#007AFF' }}>
                       <EditIcon fontSize="small" />
                     </IconButton>
                     <IconButton size="small" color="error" onClick={() => handleDelete(item, activeTab === 0 ? 'class' : 'assignment')}>
@@ -217,23 +239,35 @@ const ManagementPage = () => {
                 onChange={(e) => setSelectedItem({...selectedItem, title: e.target.value})} 
               />
             </Grid>
+            
             {editType === 'class' ? (
-              <Grid item xs={12}>
-                <TextField 
-                  fullWidth label="Location" 
-                  value={selectedItem?.location || ''} 
-                  onChange={(e) => setSelectedItem({...selectedItem, location: e.target.value})} 
-                />
-              </Grid>
+              <>
+                <Grid item xs={6}>
+                  <TextField fullWidth label="Start Time" type="time" value={selectedItem?.startTime || ''} onChange={(e) => setSelectedItem({...selectedItem, startTime: e.target.value})} InputLabelProps={{ shrink: true }} />
+                </Grid>
+                <Grid item xs={6}>
+                  <TextField fullWidth label="End Time" type="time" value={selectedItem?.endTime || ''} onChange={(e) => setSelectedItem({...selectedItem, endTime: e.target.value})} InputLabelProps={{ shrink: true }} />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField fullWidth label="Location" value={selectedItem?.location || ''} onChange={(e) => setSelectedItem({...selectedItem, location: e.target.value})} />
+                </Grid>
+              </>
             ) : (
-              <Grid item xs={12}>
-                <TextField 
-                  fullWidth label="Details" 
-                  multiline rows={3} 
-                  value={selectedItem?.details || ''} 
-                  onChange={(e) => setSelectedItem({...selectedItem, details: e.target.value})} 
-                />
-              </Grid>
+              <>
+                <Grid item xs={6}>
+                  <TextField fullWidth label="Due Date" type="date" value={selectedItem?.dueDate ? new Date(selectedItem.dueDate?.toDate?.() || selectedItem.dueDate).toISOString().split('T')[0] : ''} onChange={(e) => setSelectedItem({...selectedItem, dueDate: e.target.value})} InputLabelProps={{ shrink: true }} />
+                </Grid>
+                <Grid item xs={6}>
+                  <TextField select fullWidth label="Priority" value={selectedItem?.priority || 'Medium'} onChange={(e) => setSelectedItem({...selectedItem, priority: e.target.value})} SelectProps={{ native: true }}>
+                    <option value="High">High</option>
+                    <option value="Medium">Medium</option>
+                    <option value="Low">Low</option>
+                  </TextField>
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField fullWidth label="Details" multiline rows={3} value={selectedItem?.details || ''} onChange={(e) => setSelectedItem({...selectedItem, details: e.target.value})} />
+                </Grid>
+              </>
             )}
           </Grid>
         </DialogContent>
