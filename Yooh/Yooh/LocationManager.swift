@@ -22,8 +22,8 @@ class LocationManager: NSObject, ObservableObject {
     private var schoolLocationManager: SchoolLocationManager?
     
     // Fallback to your original coordinates if no dynamic location is set
-    private let defaultSchoolLocation = CLLocation(latitude: -1.191397, longitude: 36.655940)
-    private let defaultSchoolRadius: CLLocationDistance = 500
+    private let defaultSchoolLocation = CLLocation(latitude: -1.1409422, longitude: 36.9956703)
+    private let defaultSchoolRadius: CLLocationDistance = 300
     
     override init() {
         super.init()

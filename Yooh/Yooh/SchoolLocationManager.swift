@@ -150,8 +150,8 @@ class SchoolLocationManager: ObservableObject {
         let defaultSchool = SchoolLocation(
             name: "My School",
             address: "School Address",
-            latitude: -1.191397,
-            longitude: 36.655940,
+            latitude: -1.1409422,
+            longitude: 36.9956703,
             radius: 300.0
         )
         addSchoolLocation(defaultSchool)
